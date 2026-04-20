@@ -1,3 +1,4 @@
+import re
 from gettext import gettext as _
 
 from markdown import markdown
@@ -6,6 +7,8 @@ from django.db import models
 from django.utils import timezone
 from django.utils.html import escape
 from django.utils.safestring import mark_safe
+
+_UNSAFE_PROTOCOL = re.compile(r'(href|src)="(?:javascript|data|vbscript):', re.IGNORECASE)
 
 
 class Apk(models.Model):
@@ -36,7 +39,9 @@ class Apk(models.Model):
     created_on = models.DateTimeField(default=timezone.now)
 
     def markdown_description(self):
-        return mark_safe(markdown(escape(self.description)))
+        html = markdown(escape(self.description))
+        html = _UNSAFE_PROTOCOL.sub(r'\1="#', html)
+        return mark_safe(html)
 
     class Meta:
         unique_together = ("apk_type", "version", "pack")
