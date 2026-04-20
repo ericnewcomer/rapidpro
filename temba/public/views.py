@@ -145,10 +145,6 @@ class LeadCRUDL(SmartCRUDL):
         def form_invalid(self, form):
             url = reverse("public.public_index")
             email = ", ".join(form.errors["email"])
-
-            if "from_url" in form.data:  # pragma: needs cover
-                url = reverse(form.data["from_url"])
-
             return HttpResponseRedirect(url + "?errors=%s" % email)
 
         def pre_save(self, obj):
