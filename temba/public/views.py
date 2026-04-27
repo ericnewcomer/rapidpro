@@ -147,7 +147,10 @@ class LeadCRUDL(SmartCRUDL):
             email = ", ".join(form.errors["email"])
 
             if "from_url" in form.data:  # pragma: needs cover
-                url = reverse(form.data["from_url"])
+                try:
+                    url = reverse(form.data["from_url"])
+                except Exception:
+                    pass
 
             return HttpResponseRedirect(url + "?errors=%s" % email)
 
