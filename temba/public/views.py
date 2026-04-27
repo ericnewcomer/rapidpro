@@ -4,7 +4,7 @@ from smartmin.views import SmartCreateView, SmartCRUDL, SmartFormView, SmartList
 
 from django.conf import settings
 from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
-from django.urls import reverse
+from django.urls import NoReverseMatch, reverse
 from django.utils.translation import gettext_lazy as _
 from django.views.decorators.csrf import csrf_exempt
 from django.views.generic import RedirectView, View
@@ -149,7 +149,7 @@ class LeadCRUDL(SmartCRUDL):
             if "from_url" in form.data:  # pragma: needs cover
                 try:
                     url = reverse(form.data["from_url"])
-                except Exception:
+                except NoReverseMatch:
                     pass
 
             return HttpResponseRedirect(url + "?errors=%s" % email)
