@@ -1,8 +1,10 @@
 import logging
+import re
 from urllib.parse import quote, urlencode
 
 import requests
-from gunicorn.http.wsgi import HEADER_VALUE_RE
+
+_HEADER_BAD_CHARS = re.compile(r"[\x00-\x08\x0a-\x1f\x7f]")
 
 from django import forms
 from django.conf import settings
@@ -273,7 +275,7 @@ class BulkActionMixin:
 
         response = self.get(request, *args, **kwargs)
         if action_error:
-            response["Temba-Toast"] = HEADER_VALUE_RE.sub("", str(action_error))
+            response["Temba-Toast"] = _HEADER_BAD_CHARS.sub("", str(action_error))
 
         return response
 
