@@ -4,8 +4,6 @@ from urllib.parse import quote, urlencode
 
 import requests
 
-_HEADER_BAD_CHARS = re.compile(r"[\x00-\x08\x0a-\x1f\x7f]")
-
 from django import forms
 from django.conf import settings
 from django.db import transaction
@@ -22,6 +20,8 @@ from temba.utils import json
 from temba.utils.fields import CheckboxWidget, DateWidget, InputWidget, SelectMultipleWidget, SelectWidget
 
 logger = logging.getLogger(__name__)
+
+_HEADER_BAD_CHARS = re.compile(r"[\x00-\x08\x0a-\x1f\x7f]")
 
 TEMBA_MENU_SELECTION = "temba_menu_selection"
 TEMBA_CONTENT_ONLY = "x-temba-content-only"
