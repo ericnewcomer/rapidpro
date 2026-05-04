@@ -1,8 +1,8 @@
 import logging
+import re
 from urllib.parse import quote, urlencode
 
 import requests
-from gunicorn.http.wsgi import HEADER_VALUE_RE
 
 from django import forms
 from django.conf import settings
@@ -20,6 +20,8 @@ from temba.utils import json
 from temba.utils.fields import CheckboxWidget, DateWidget, InputWidget, SelectMultipleWidget, SelectWidget
 
 logger = logging.getLogger(__name__)
+
+_HEADER_BAD_CHARS = re.compile(r"[\x00-\x08\x0a-\x1f\x7f]")
 
 TEMBA_MENU_SELECTION = "temba_menu_selection"
 TEMBA_CONTENT_ONLY = "x-temba-content-only"
@@ -273,7 +275,7 @@ class BulkActionMixin:
 
         response = self.get(request, *args, **kwargs)
         if action_error:
-            response["Temba-Toast"] = HEADER_VALUE_RE.sub("", str(action_error))
+            response["Temba-Toast"] = _HEADER_BAD_CHARS.sub("", str(action_error))
 
         return response
 
