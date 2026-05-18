@@ -1,10 +1,10 @@
 from gettext import gettext as _
 
+import nh3
 from markdown import markdown
 
 from django.db import models
 from django.utils import timezone
-from django.utils.html import escape
 from django.utils.safestring import mark_safe
 
 
@@ -36,7 +36,7 @@ class Apk(models.Model):
     created_on = models.DateTimeField(default=timezone.now)
 
     def markdown_description(self):
-        return mark_safe(markdown(escape(self.description)))
+        return mark_safe(nh3.clean(markdown(self.description)))
 
     class Meta:
         unique_together = ("apk_type", "version", "pack")
