@@ -42,7 +42,7 @@ class ConnectView(BaseConnectView):
             org = self.request.org
             data = self.cleaned_data["subdomain"]
 
-            if not re.match(r"^[\w\-]+", data):
+            if not re.match(r"^[\w\-]+$", data):
                 raise forms.ValidationError(_("Not a valid subdomain name."))
 
             for_domain = org.ticketers.filter(is_active=True, ticketer_type=ZendeskType.slug, config__subdomain=data)
@@ -197,6 +197,15 @@ class AdminUIView(SmartFormView):
         locale = forms.CharField(widget=forms.HiddenInput())
         instance_push_id = forms.CharField(widget=forms.HiddenInput())
         zendesk_access_token = forms.CharField(widget=forms.HiddenInput())
+
+        def clean_return_url(self):
+            data = self.cleaned_data["return_url"]
+            parsed = urlparse(data)
+            if not parsed.hostname or not parsed.hostname.endswith(".zendesk.com"):
+                raise forms.ValidationError(_("Invalid return URL."))
+            if parsed.scheme not in ("https",):
+                raise forms.ValidationError(_("Invalid return URL."))
+            return data
 
         def clean_secret(self):
             from .type import ZendeskType
