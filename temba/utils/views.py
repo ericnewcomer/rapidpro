@@ -1,8 +1,10 @@
 import logging
+import re
 from urllib.parse import quote, urlencode
 
 import requests
-from gunicorn.http.wsgi import HEADER_VALUE_RE
+
+HEADER_VALUE_RE = re.compile(r"[\x00-\x1f\x7f]")
 
 from django import forms
 from django.conf import settings

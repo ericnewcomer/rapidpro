@@ -232,10 +232,10 @@ chalk@^4.1.0:
     ansi-styles "^4.1.0"
     supports-color "^7.1.0"
 
-codemirror@5.18.2:
-  version "5.18.2"
-  resolved "https://registry.npmjs.org/codemirror/-/codemirror-5.18.2.tgz#55b42d0190f72ec86c13f25d945f347cabc16a8e"
-  integrity sha512-xjBalLC1Yj8HqBN0x0NXlkynl7JYLz+Q0e0bbVNUwCKIw2Rr097j8QB0VvQoAHFOOCRge3nQyfoLRMx97TGccQ==
+codemirror@5.65.18:
+  version "5.65.18"
+  resolved "https://registry.yarnpkg.com/codemirror/-/codemirror-5.65.18.tgz#d7146e4271135a9b4adcd023a270185457c9c428"
+  integrity sha512-Gaz4gHnkbHMGgahNt3CA5HBk5lLQBqmD/pBgeB4kQU6OedZmqMBjlRF0LSrp2tJ4wlLNPm2FfaUd1pDy0mdlpA==
 
 color-convert@^1.9.0, color-convert@^1.9.3:
   version "1.9.3"

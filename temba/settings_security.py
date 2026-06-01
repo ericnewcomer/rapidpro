@@ -1,6 +1,8 @@
 # require cookies to be on https (ergo logged in users must be on https)
 SESSION_COOKIE_SECURE = True
 SESSION_COOKIE_AGE = 1209600  # 2 weeks
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = "Lax"
 
 # settings used by SecurityMiddleware
 SECURE_BROWSER_XSS_FILTER = True

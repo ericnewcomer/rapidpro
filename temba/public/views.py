@@ -142,11 +142,13 @@ class LeadCRUDL(SmartCRUDL):
         def get_success_url(self):
             return reverse("orgs.org_signup") + "?%s" % urlencode({"email": self.form.cleaned_data["email"]})
 
+        ALLOWED_FROM_URLS = {"public.public_index"}
+
         def form_invalid(self, form):
             url = reverse("public.public_index")
             email = ", ".join(form.errors["email"])
 
-            if "from_url" in form.data:  # pragma: needs cover
+            if "from_url" in form.data and form.data["from_url"] in self.ALLOWED_FROM_URLS:  # pragma: needs cover
                 url = reverse(form.data["from_url"])
 
             return HttpResponseRedirect(url + "?errors=%s" % email)
