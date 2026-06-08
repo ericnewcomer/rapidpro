@@ -198,6 +198,13 @@ class AdminUIView(SmartFormView):
         instance_push_id = forms.CharField(widget=forms.HiddenInput())
         zendesk_access_token = forms.CharField(widget=forms.HiddenInput())
 
+        def clean_return_url(self):
+            url = self.cleaned_data["return_url"]
+            parsed = urlparse(url)
+            if not parsed.scheme == "https" or not parsed.netloc.endswith(".zendesk.com"):
+                raise forms.ValidationError(_("Invalid return URL."))
+            return url
+
         def clean_secret(self):
             from .type import ZendeskType
 
