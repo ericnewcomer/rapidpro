@@ -201,7 +201,8 @@ class AdminUIView(SmartFormView):
         def clean_return_url(self):
             url = self.cleaned_data["return_url"]
             parsed = urlparse(url)
-            if not parsed.scheme == "https" or not parsed.netloc.endswith(".zendesk.com"):
+            expected_host = f"{self.subdomain}.zendesk.com"
+            if parsed.scheme != "https" or parsed.hostname != expected_host:
                 raise forms.ValidationError(_("Invalid return URL."))
             return url
 
