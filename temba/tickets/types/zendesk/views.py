@@ -305,7 +305,8 @@ class FileCallbackView(View):
         return super().dispatch(*args, **kwargs)
 
     def post(self, request, *args, **kwargs):
-        sub_path = posixpath.normpath(kwargs["path"])
-        if ".." in sub_path or sub_path.startswith("/"):
+        raw_path = kwargs["path"]
+        sub_path = posixpath.normpath(raw_path)
+        if sub_path == "." or sub_path.startswith("/") or any(part == ".." for part in raw_path.split("/")):
             return HttpResponseNotFound()
-        return FileResponse(public_file_storage.open("attachments/" + sub_path))
+        return FileResponse(public_file_storage.open(posixpath.join("attachments", sub_path)))
