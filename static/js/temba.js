@@ -307,7 +307,8 @@ function hide_section(section) {
   }
 
   try {
-    eval('update_' + section.attr('id') + '()');
+    var fn = window['update_' + section.attr('id')];
+    if (typeof fn === 'function') fn();
   } catch (e) {}
 
   section
