@@ -45,7 +45,6 @@ from django.utils.encoding import DjangoUnicodeDecodeError, force_str
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.utils.text import slugify
 from django.utils.translation import gettext_lazy as _
-from django.views.decorators.csrf import csrf_exempt
 
 from temba.api.models import APIToken, Resthook
 from temba.campaigns.models import Campaign
@@ -670,10 +669,6 @@ class UserCRUDL(SmartCRUDL):
 
         def derive_menu_path(self):
             return f"/staff/users/{self.request.GET.get('filter', 'all')}"
-
-        @csrf_exempt
-        def dispatch(self, *args, **kwargs):
-            return super().dispatch(*args, **kwargs)
 
         def derive_queryset(self, **kwargs):
             qs = super().derive_queryset(**kwargs).filter(is_active=True).exclude(id=get_anonymous_user().id)
@@ -1745,10 +1740,6 @@ class OrgCRUDL(SmartCRUDL):
             ("suspended", _("Suspended"), dict(is_suspended=True), None),
             ("verified", _("Verified"), dict(config__verified=True, is_suspended=False), None),
         )
-
-        @csrf_exempt
-        def dispatch(self, *args, **kwargs):
-            return super().dispatch(*args, **kwargs)
 
         def get_filter(self):
             obj_filter = self.request.GET.get("filter", "all")
