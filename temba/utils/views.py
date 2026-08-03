@@ -1,8 +1,8 @@
 import logging
+import re
 from urllib.parse import quote, urlencode
 
 import requests
-from gunicorn.http.wsgi import HEADER_VALUE_RE
 
 from django import forms
 from django.conf import settings
@@ -24,6 +24,7 @@ logger = logging.getLogger(__name__)
 TEMBA_MENU_SELECTION = "temba_menu_selection"
 TEMBA_CONTENT_ONLY = "x-temba-content-only"
 TEMBA_VERSION = "x-temba-version"
+INVALID_HEADER_CHARS_RE = re.compile(r"[\x00-\x1f\x7f]")
 
 
 class NoNavMixin(View):
@@ -273,7 +274,7 @@ class BulkActionMixin:
 
         response = self.get(request, *args, **kwargs)
         if action_error:
-            response["Temba-Toast"] = HEADER_VALUE_RE.sub("", str(action_error))
+            response["Temba-Toast"] = INVALID_HEADER_CHARS_RE.sub("", str(action_error))
 
         return response
 
