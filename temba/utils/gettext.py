@@ -1,5 +1,6 @@
 import os
 from dataclasses import dataclass
+from uuid import UUID
 
 import polib
 import pycountry
@@ -11,6 +12,8 @@ from .uuid import uuid4
 
 
 def po_get_path(org, uuid):
+    # validate that the uuid is well-formed so it can't be used to traverse outside this org's directory
+    uuid = str(UUID(str(uuid)))
     return os.path.join(settings.STORAGE_ROOT_DIR, str(org.id), "po_imports", uuid + ".po")
 
 

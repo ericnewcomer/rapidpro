@@ -774,7 +774,11 @@ class UserCRUDL(SmartCRUDL):
 
                 token = "".join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(32))
                 RecoveryToken.objects.create(token=token, user=user)
-                FailedLogin.objects.filter(username__iexact=user.username).delete()
+
+                # note: we deliberately do NOT clear FailedLogin here. This view is public and unauthenticated,
+                # so clearing the lockout counter for an arbitrary email would let an attacker reset the
+                # brute-force protection at will. Failed logins expire on their own (USER_LOCKOUT_TIMEOUT) and
+                # are cleared on the next successful login.
 
                 context = dict(user=user, path=f'{reverse("users.user_recover", args=[token])}')
                 send_template_email(email, subject, template, context, self.request.branding)
@@ -3108,3 +3112,7 @@ class OrgImportCRUDL(SmartCRUDL):
 
         def derive_title(self):
             return _("Import Flows and Campaigns")
+
+        def get_queryset(self, **kwargs):
+            # scope to the current workspace so imports from other orgs can't be read by id
+            return super().get_queryset(**kwargs).filter(org=self.request.org)

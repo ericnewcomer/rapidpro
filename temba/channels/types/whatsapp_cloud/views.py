@@ -1,4 +1,4 @@
-from random import randint
+import secrets
 
 import requests
 from smartmin.views import SmartFormView, SmartModelActionView, SmartTemplateView
@@ -151,7 +151,7 @@ class ClaimView(ClaimViewMixin, SmartFormView):
         business_id = form.cleaned_data["business_id"]
         currency = form.cleaned_data["currency"]
         message_template_namespace = form.cleaned_data["message_template_namespace"]
-        pin = str(randint(100000, 999999))
+        pin = f"{secrets.randbelow(900000) + 100000:06d}"
 
         name = truncate(f"{number} - {verified_name}", 64)
 
