@@ -22,9 +22,9 @@ class WhatsAppCloudTypeTest(TembaTest):
         WHATSAPP_FACEBOOK_BUSINESS_ID="FB_BUSINESS_ID",
         WHATSAPP_ADMIN_SYSTEM_USER_TOKEN="WA_ADMIN_TOKEN",
     )
-    @patch("temba.channels.types.whatsapp_cloud.views.randint")
-    def test_claim(self, mock_randint):
-        mock_randint.return_value = 111111
+    @patch("temba.channels.types.whatsapp_cloud.views.secrets.randbelow")
+    def test_claim(self, mock_randbelow):
+        mock_randbelow.return_value = 111111 - 100000
 
         Channel.objects.all().delete()
         self.login(self.admin)
