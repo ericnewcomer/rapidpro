@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import os
+import subprocess
 import sys
 
 from hamlpy.compiler import Compiler
@@ -40,4 +41,4 @@ if os.path.isdir(source):
 else:
     converted = convert_template(source, delete=True)
 
-os.system(f"djlint --profile=django --reformat --quiet {converted}")
+subprocess.run(["djlint", "--profile=django", "--reformat", "--quiet", converted])

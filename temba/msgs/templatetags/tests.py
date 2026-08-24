@@ -77,4 +77,4 @@ class TestSMSTagLibrary(TembaTest):
 
         rendered = template.render(context)
         self.assertIn("attachment", rendered)
-        self.assertIn("data-preview-url='https://example.com/test.jpg'", rendered)
+        self.assertIn('data-preview-url="https://example.com/test.jpg"', rendered)
