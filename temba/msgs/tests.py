@@ -75,6 +75,19 @@ class MediaTest(TembaTest):
         self.assertEqual("passwd.jpg", Media.clean_name(".passwd", "image/jpeg"))
         self.assertEqual("tést[0].jpg", Media.clean_name("tést[0]/^..\\", "image/jpeg"))
 
+    def test_is_allowed_type(self):
+        self.assertTrue(Media.is_allowed_type("image/png"))
+        self.assertTrue(Media.is_allowed_type("audio/mp4"))
+        self.assertTrue(Media.is_allowed_type("video/mp4"))
+        self.assertTrue(Media.is_allowed_type("application/pdf"))
+
+        # SVGs can carry active content (stored XSS) so are rejected despite matching image/*
+        self.assertFalse(Media.is_allowed_type("image/svg+xml"))
+        self.assertFalse(Media.is_allowed_type("IMAGE/SVG+XML"))
+        self.assertFalse(Media.is_allowed_type("image/svg+xml; charset=utf-8"))
+        self.assertFalse(Media.is_allowed_type("image/svg"))
+        self.assertFalse(Media.is_allowed_type("text/html"))
+
     @mock_uuids
     def test_from_upload(self):
         media = Media.from_upload(

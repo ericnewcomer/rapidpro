@@ -7,7 +7,7 @@ class AuthenticationBackend(ModelBackend):
     def authenticate(self, request, username=None, password=None, **kwargs):
         try:
             user = User.objects.get(username__iexact=username)
-            if user.check_password(password):
+            if user.check_password(password) and self.user_can_authenticate(user):
                 return user
             else:
                 return None

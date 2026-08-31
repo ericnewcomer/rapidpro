@@ -254,7 +254,7 @@ class AdminUIView(SmartFormView):
         of the form, so we check the referer.
         """
         referer = urlparse(self.request.META.get("HTTP_REFERER", "")).netloc
-        return referer.endswith("zendesk.com")
+        return referer == "zendesk.com" or referer.endswith(".zendesk.com")
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()

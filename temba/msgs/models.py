@@ -43,6 +43,9 @@ class Media(models.Model):
     """
 
     ALLOWED_CONTENT_TYPES = ("image/*", "audio/*", "video/*", "application/pdf")
+    # SVGs match image/* but are active content (can embed scripts), so serving an uploaded one from
+    # our own origin is stored XSS - reject them even though they'd otherwise pass the image/* check
+    DISALLOWED_CONTENT_TYPES = ("image/svg+xml", "image/svg")
     MAX_UPLOAD_SIZE = 1024 * 1024 * 25  # 25MB
 
     STATUS_PENDING = "P"
@@ -69,6 +72,8 @@ class Media(models.Model):
 
     @classmethod
     def is_allowed_type(cls, content_type: str) -> bool:
+        if content_type.split(";")[0].strip().lower() in cls.DISALLOWED_CONTENT_TYPES:
+            return False
         for allowed_type in cls.ALLOWED_CONTENT_TYPES:
             if fnmatch(content_type, allowed_type):
                 return True
