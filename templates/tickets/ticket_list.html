@@ -166,7 +166,7 @@
         document.title = menuItem.name;
 
         const title = document.querySelector("#folder-title");
-        title.innerHTML = menuItem.name;
+        title.textContent = menuItem.name;
 
         // whenever our menu changes, reset filter
         if (statusSelect) {

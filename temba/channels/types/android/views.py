@@ -2,6 +2,7 @@ import phonenumbers
 from smartmin.views import SmartFormView
 
 from django import forms
+from django.db.models import Q
 from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
 
@@ -27,8 +28,13 @@ class ClaimView(ClaimViewMixin, SmartFormView):
             claim_code = self.cleaned_data["claim_code"]
             claim_code = claim_code.replace(" ", "").upper()
 
-            # is there a channel with that claim?
-            channel = Channel.objects.filter(claim_code=claim_code, is_active=True).first()
+            # is there a channel with that claim? only claim channels that are unclaimed or already
+            # belong to this org, so a leaked claim code can't move another workspace's channel here
+            channel = (
+                Channel.objects.filter(claim_code=claim_code, is_active=True)
+                .filter(Q(org__isnull=True) | Q(org=self.org))
+                .first()
+            )
 
             if not channel:
                 raise forms.ValidationError(_("Invalid claim code, please check and try again."))
@@ -87,7 +93,11 @@ class ClaimView(ClaimViewMixin, SmartFormView):
     def form_valid(self, form):
         org = self.request.org
 
-        self.object = Channel.objects.filter(claim_code=self.form.cleaned_data["claim_code"]).first()
+        self.object = (
+            Channel.objects.filter(claim_code=self.form.cleaned_data["claim_code"])
+            .filter(Q(org__isnull=True) | Q(org=org))
+            .first()
+        )
 
         country = self.object.country
         phone_country = countries.from_tel(self.form.cleaned_data["phone_number"]) or str(self.object.country)

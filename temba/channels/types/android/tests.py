@@ -300,6 +300,48 @@ class AndroidTypeTest(TembaTest, CRUDLTestMixin):
         # should be added with RW as the country
         self.assertTrue(Channel.objects.get(address="+250788382382", country="RW", org=self.org))
 
+    def test_register_ignores_non_android_channel(self):
+        # a non-Android channel sharing a UUID must never be reset by the Android register endpoint
+        other = self.create_channel("T", "Twilio", "+250785551212", country="RW", secret="original-secret")
+        other.uuid = "shared-uuid"
+        other.save(update_fields=("uuid",))
+
+        reg_data = dict(
+            cmds=[dict(cmd="fcm", fcm_id="FCM111", uuid="shared-uuid"), dict(cmd="status", cc="RW", dev="Nexus")]
+        )
+        response = self.client.post(reverse("register"), json.dumps(reg_data), content_type="application/json")
+        self.assertEqual(200, response.status_code)
+
+        # we get the benign 'unsupported' registration response
+        self.assertEqual(-1, response.json()["cmds"][0]["relayer_id"])
+
+        # the Twilio channel is untouched...
+        other.refresh_from_db()
+        self.assertEqual("T", other.channel_type)
+        self.assertEqual("original-secret", other.secret)
+        self.assertEqual(self.org, other.org)
+
+        # ...and no Android channel was created for it
+        self.assertFalse(Channel.objects.filter(channel_type="A", uuid="shared-uuid").exists())
+
+    def test_claim_rejects_channel_owned_by_another_org(self):
+        # a channel that already belongs to another org can't be claimed here even with its claim code
+        other = self.create_channel("A", "Other Android", "", country="RW", org=self.org2)
+        other.claim_code = "ABCDEFGH1"
+        other.save(update_fields=("claim_code",))
+
+        self.login(self.admin)
+        response = self.client.post(
+            reverse("channels.types.android.claim"),
+            {"claim_code": "ABCDEFGH1", "phone_number": "0788123123"},
+        )
+        self.assertFormError(response, "form", "claim_code", "Invalid claim code, please check and try again.")
+
+        # the other org's channel is untouched
+        other.refresh_from_db()
+        self.assertEqual(self.org2, other.org)
+        self.assertEqual("ABCDEFGH1", other.claim_code)
+
     def test_update(self):
         update_url = reverse("channels.channel_update", args=[self.channel.id])
 

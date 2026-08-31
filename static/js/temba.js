@@ -3,16 +3,25 @@ if (typeof console == 'undefined') {
   this.console = { log: function (msg) {} };
 }
 
+// rejects script-bearing url schemes (javascript:, data:, vbscript:) while allowing http(s), relative and other benign links
+function isSafeURL(url) {
+  return !/^\s*(javascript|data|vbscript):/i.test(url || '');
+}
+
 function downloadFile(evt, url) {
   evt.stopPropagation();
   evt.preventDefault();
-  window.open(url, '_download');
+  if (isSafeURL(url)) {
+    window.open(url, '_download');
+  }
 }
 
 function openWindow(evt, url, target) {
   evt.stopPropagation();
   evt.preventDefault();
-  window.open(url, target);
+  if (isSafeURL(url)) {
+    window.open(url, target);
+  }
 }
 
 function showLightbox(evt, url) {
@@ -36,7 +45,51 @@ function showPreview(evt, ele) {
 
   var container = document.createElement('div');
   container.style = 'text-align:center;line-height:0px;padding:0px';
-  container.innerHTML = ele.getAttribute('attachment');
+
+  // build the preview node with DOM APIs rather than innerHTML so the attachment
+  // url can never be interpreted as markup (avoids stored XSS via message attachments)
+  var url = ele.getAttribute('data-preview-url');
+  var type = ele.getAttribute('data-preview-type');
+  var contentType = ele.getAttribute('data-content-type') || '';
+  var rounded =
+    'border-top-left-radius:var(--curvature);border-top-right-radius:var(--curvature);box-shadow:0px 0px 12px 0px rgba(0,0,0,.1), 0px 0px 2px 0px rgba(0,0,0,.15);';
+
+  var node;
+  if (type === 'image') {
+    node = document.createElement('img');
+    node.style.cssText = 'max-width:500px;max-height:500px';
+    node.src = url;
+  } else if (type === 'audio') {
+    node = document.createElement('audio');
+    node.style.cssText = 'width:360px;padding:2em;';
+    node.controls = true;
+    var audioSource = document.createElement('source');
+    audioSource.type = contentType;
+    audioSource.src = url;
+    node.appendChild(audioSource);
+  } else if (type === 'video') {
+    node = document.createElement('video');
+    node.style.cssText = rounded + 'max-width:400px;max-height:400px;';
+    node.setAttribute('height', 'auto');
+    node.controls = true;
+    var videoSource = document.createElement('source');
+    videoSource.src = url;
+    videoSource.type = contentType;
+    node.appendChild(videoSource);
+  } else {
+    node = document.createElement('div');
+    node.style.cssText = 'width:600px;height:600px;' + rounded + 'overflow:hidden';
+    var embed = document.createElement('embed');
+    embed.setAttribute('type', 'application/pdf');
+    embed.setAttribute('frameBorder', '0');
+    embed.setAttribute('scrolling', 'auto');
+    embed.setAttribute('height', '100%');
+    embed.setAttribute('width', '100%');
+    embed.src = url + '#view=Fit';
+    node.appendChild(embed);
+  }
+
+  container.appendChild(node);
   dialog.body = container;
   dialog.open = true;
 }

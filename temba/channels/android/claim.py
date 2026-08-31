@@ -41,6 +41,12 @@ def get_or_create_channel(registration_data, status):
     # look for existing active channel with this UUID
     existing = Channel.objects.filter(uuid=uuid, is_active=True).first()
 
+    # a UUID uniquely identifies a channel, so if one exists that isn't an Android channel, refuse
+    # rather than resetting it: this endpoint must never be usable to rotate the secret of another
+    # channel type (e.g. Twilio or WhatsApp), and channel UUIDs are not secret
+    if existing and existing.channel_type != "A":
+        raise UnsupportedAndroidChannelError("Not an Android channel.")
+
     # if device exists reset some of the settings (ok because device clearly isn't in use if it's registering)
     if existing:
         config = existing.config

@@ -162,12 +162,20 @@ function goto(event, ele) {
 }
 
 function goto(event, ele) {
+  // reject script-bearing url schemes (javascript:, data:, vbscript:) before navigating
+  var isSafeURL = function (url) {
+    return !/^\s*(javascript|data|vbscript):/i.test(url || '');
+  };
+
   if (event.target != ele) {
     if (event.target.href) {
       event.stopPropagation();
       event.preventDefault();
 
       var link = event.target.href;
+      if (!isSafeURL(link)) {
+        return;
+      }
       if (event.metaKey) {
         window.open(link, '_blank');
       } else if (event.target.target) {
@@ -197,7 +205,7 @@ function goto(event, ele) {
     }
   }
 
-  if (href) {
+  if (href && isSafeURL(href)) {
     if (event.metaKey) {
       window.open(href, '_blank');
     } else {

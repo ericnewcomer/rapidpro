@@ -42,7 +42,7 @@ class ConnectView(BaseConnectView):
             org = self.request.org
             data = self.cleaned_data["subdomain"]
 
-            if not re.match(r"^[\w\-]+", data):
+            if not re.match(r"^[\w\-]+$", data):
                 raise forms.ValidationError(_("Not a valid subdomain name."))
 
             for_domain = org.ticketers.filter(is_active=True, ticketer_type=ZendeskType.slug, config__subdomain=data)
@@ -198,6 +198,15 @@ class AdminUIView(SmartFormView):
         instance_push_id = forms.CharField(widget=forms.HiddenInput())
         zendesk_access_token = forms.CharField(widget=forms.HiddenInput())
 
+        def clean_return_url(self):
+            data = self.cleaned_data["return_url"]
+            parsed = urlparse(data)
+            hostname = parsed.hostname or ""
+            if parsed.scheme != "https" or not (hostname == "zendesk.com" or hostname.endswith(".zendesk.com")):
+                raise forms.ValidationError(_("Not a valid return URL."))
+
+            return data
+
         def clean_secret(self):
             from .type import ZendeskType
 
@@ -245,7 +254,7 @@ class AdminUIView(SmartFormView):
         of the form, so we check the referer.
         """
         referer = urlparse(self.request.META.get("HTTP_REFERER", "")).netloc
-        return referer.endswith("zendesk.com")
+        return referer == "zendesk.com" or referer.endswith(".zendesk.com")
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()

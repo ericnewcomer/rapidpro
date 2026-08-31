@@ -914,6 +914,8 @@ class TestValidators(TestCase):
             ("http://192.168.0.0/foo", ["Cannot be a local or private host."]),  # private
             ("http://255.255.255.255", ["Cannot be a local or private host."]),  # multicast
             ("http://169.254.169.254/latest", ["Cannot be a local or private host."]),  # link local
+            ("http://0.0.0.0/foo", ["Cannot be a local or private host."]),  # unspecified
+            ("http://240.0.0.1/foo", ["Cannot be a local or private host."]),  # reserved
             ("http://::1:80/foo", ["Unable to resolve host."]),  # no ipv6 addresses for now
             ("http://google.com/foo", []),
             ("http://google.com:8000/foo", []),
