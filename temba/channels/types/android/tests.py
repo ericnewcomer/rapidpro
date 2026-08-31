@@ -312,16 +312,17 @@ class AndroidTypeTest(TembaTest, CRUDLTestMixin):
         response = self.client.post(reverse("register"), json.dumps(reg_data), content_type="application/json")
         self.assertEqual(200, response.status_code)
 
+        # we get the benign 'unsupported' registration response
+        self.assertEqual(-1, response.json()["cmds"][0]["relayer_id"])
+
         # the Twilio channel is untouched...
         other.refresh_from_db()
         self.assertEqual("T", other.channel_type)
         self.assertEqual("original-secret", other.secret)
         self.assertEqual(self.org, other.org)
 
-        # ...and a separate, unclaimed Android channel was created for the registration
-        android = Channel.objects.get(channel_type="A", uuid="shared-uuid")
-        self.assertIsNone(android.org)
-        self.assertNotEqual(android.id, other.id)
+        # ...and no Android channel was created for it
+        self.assertFalse(Channel.objects.filter(channel_type="A", uuid="shared-uuid").exists())
 
     def test_claim_rejects_channel_owned_by_another_org(self):
         # a channel that already belongs to another org can't be claimed here even with its claim code
