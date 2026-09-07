@@ -1,3 +1,5 @@
+import re
+
 import requests
 from smartmin.views import SmartFormView
 
@@ -51,6 +53,25 @@ class ClaimView(ClaimViewMixin, SmartFormView):
 
         facebook_namespace = forms.CharField(max_length=128, help_text=_("The namespace for your WhatsApp templates"))
 
+        def clean_facebook_template_list_domain(self):
+            domain = self.cleaned_data["facebook_template_list_domain"].strip()
+
+            # check this is a plain domain name and that it doesn't point to a local or private host as it will be
+            # fetched from server side
+            if not re.match(r"^[a-zA-Z0-9\-.]+$", domain):
+                raise forms.ValidationError(_("Invalid domain name."))
+
+            ExternalURLField().clean(f"https://{domain}/")
+            return domain
+
+        def clean_facebook_business_id(self):
+            business_id = self.cleaned_data["facebook_business_id"].strip()
+
+            # will be interpolated into a URL path so restrict it to safe characters
+            if not re.match(r"^[a-zA-Z0-9_\-]+$", business_id):
+                raise forms.ValidationError(_("Invalid business ID."))
+            return business_id
+
         def clean(self):
             # first check that our phone number looks sane
             country = self.cleaned_data["country"]
@@ -88,15 +109,18 @@ class ClaimView(ClaimViewMixin, SmartFormView):
             # check we can access their facebook templates
             from .type import TEMPLATE_LIST_URL
 
-            if self.cleaned_data["facebook_template_list_domain"] != "graph.facebook.com":
+            template_domain = self.cleaned_data.get("facebook_template_list_domain")
+            business_id = self.cleaned_data.get("facebook_business_id")
+
+            if template_domain and business_id and template_domain != "graph.facebook.com":
                 api_version = self.cleaned_data.get("facebook_template_list_api_version", "v14.0") or "v14.0"
 
                 response = requests.get(
                     TEMPLATE_LIST_URL
                     % (
-                        self.cleaned_data["facebook_template_list_domain"],
+                        template_domain,
                         api_version,
-                        self.cleaned_data["facebook_business_id"],
+                        business_id,
                     ),
                     params=dict(access_token=self.cleaned_data["facebook_access_token"]),
                 )

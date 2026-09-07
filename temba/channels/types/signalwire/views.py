@@ -1,3 +1,5 @@
+import re
+
 import phonenumbers
 import requests
 from smartmin.views import SmartFormView
@@ -6,7 +8,7 @@ from django import forms
 from django.forms import ValidationError
 from django.utils.translation import gettext_lazy as _
 
-from temba.utils.fields import SelectWidget
+from temba.utils.fields import ExternalURLField, SelectWidget
 
 from ...models import Channel
 from ...views import ALL_COUNTRIES, ClaimViewMixin
@@ -41,12 +43,34 @@ class SignalWireClaimView(ClaimViewMixin, SmartFormView):
             help_text=_("The API token to use to authenticate ex: FPd199eb93e878f8a3tw9ttna313914tnauwy"),
         )
 
+        def clean_domain(self):
+            domain = self.cleaned_data["domain"].strip()
+
+            # check this is a plain domain name and that it doesn't point to a local or private host as it will be
+            # fetched from server side
+            if not re.match(r"^[a-zA-Z0-9\-.]+$", domain):
+                raise ValidationError(_("Invalid domain name."))
+
+            ExternalURLField().clean(f"https://{domain}/")
+            return domain
+
+        def clean_project_key(self):
+            project_key = self.cleaned_data["project_key"].strip()
+
+            # will be interpolated into a URL path so restrict it to safe characters
+            if not re.match(r"^[a-zA-Z0-9_\-]+$", project_key):
+                raise ValidationError(_("Invalid project key."))
+            return project_key
+
         def clean(self):
-            sid = self.cleaned_data["project_key"]
-            token = self.cleaned_data["api_token"]
-            domain = self.cleaned_data["domain"]
-            number = self.cleaned_data["number"]
-            country = self.cleaned_data["country"]
+            sid = self.cleaned_data.get("project_key")
+            token = self.cleaned_data.get("api_token")
+            domain = self.cleaned_data.get("domain")
+            number = self.cleaned_data.get("number")
+            country = self.cleaned_data.get("country")
+
+            if not (sid and domain and number and country):
+                return self.cleaned_data
 
             address = number
             if len(number) > 6:
