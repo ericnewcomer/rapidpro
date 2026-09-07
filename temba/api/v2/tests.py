@@ -10,6 +10,7 @@ import iso8601
 import pytz
 from rest_framework import serializers
 from rest_framework.test import APIClient
+from smartmin.users.models import FailedLogin
 
 from django.conf import settings
 from django.contrib.auth.models import Group
@@ -790,6 +791,20 @@ class EndpointsTest(APITest):
         # try to authenticate with incorrect password
         response = self.client.post(auth_url, {"username": "admin@nyaruka.com", "password": "XXXX", "role": "A"})
         self.assertEqual(response.status_code, 403)
+
+        # can't authenticate when user has 2FA enabled as this endpoint can't verify a second factor
+        self.admin.enable_2fa()
+        response = self.client.post(auth_url, {"username": "admin@nyaruka.com", "password": "Qwerty123", "role": "A"})
+        self.assertEqual(response.status_code, 403)
+        self.admin.disable_2fa()
+
+        # failed attempts are subject to the same lockout as regular logins
+        for i in range(5):
+            self.client.post(auth_url, {"username": "editor@nyaruka.com", "password": "XXXX", "role": "E"})
+        response = self.client.post(auth_url, {"username": "editor@nyaruka.com", "password": "Qwerty123", "role": "E"})
+        self.assertEqual(response.status_code, 403)
+
+        FailedLogin.objects.all().delete()
 
         # try to authenticate with invalid role
         response = self.client.post(auth_url, {"username": "admin@nyaruka.com", "password": "Qwerty123", "role": "X"})

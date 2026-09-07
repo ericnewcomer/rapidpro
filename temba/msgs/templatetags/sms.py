@@ -1,3 +1,5 @@
+from urllib.parse import quote
+
 from django import template
 from django.utils.safestring import mark_safe
 
@@ -103,6 +105,17 @@ def render(parser, token):
     return RenderNode(nodes, as_var)
 
 
+def _clean_attachment_url(url: str) -> str:
+    """
+    Attachment URLs are rendered into inline event handlers and HTML blobs in the attachment template, so restrict
+    them to http(s) and percent-encode any characters which could break out of those contexts.
+    """
+    if not url.lower().startswith(("http://", "https://")):
+        return ""
+
+    return quote(url, safe="/:?#[]@!$&*+,;=%~.-_")
+
+
 @register.inclusion_tag("msgs/tags/attachment.html")
 def attachment_button(attachment: str, show_thumb=False) -> dict:
     content_type, delim, url = attachment.partition(":")
@@ -118,19 +131,26 @@ def attachment_button(attachment: str, show_thumb=False) -> dict:
     else:
         category, sub_type = content_type, ""
 
-    if category == "image" and show_thumb:
-        thumb = url
-
     if category == "geo":
         preview = url
 
-        (lat, lng) = url.split(",")
+        try:
+            lat, lng = url.split(",")
+            float(lat), float(lng)  # check coordinates are numeric
+        except ValueError:
+            lat, lng = "0", "0"
+            preview = ""
+
         url = "http://www.openstreetmap.org/?mlat=%(lat)s&mlon=%(lng)s#map=18/%(lat)s/%(lng)s" % {
             "lat": lat,
             "lng": lng,
         }
     else:
+        url = _clean_attachment_url(url)
         preview = (sub_type or category).upper()  # preview the sub type if it exists or category
+
+        if category == "image" and show_thumb:
+            thumb = url
 
     return {
         "content_type": content_type,

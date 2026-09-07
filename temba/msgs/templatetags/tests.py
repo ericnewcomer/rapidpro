@@ -72,6 +72,25 @@ class TestSMSTagLibrary(TembaTest):
             attachment_button("geo:-35.998287,26.478109"),
         )
 
+        # a url with characters that could break out of an HTML attribute or JS string is escaped
+        self.assertEqual(
+            "https://example.com/test.jpg%22%3E%3Cscript%3E",
+            attachment_button('image/jpeg:https://example.com/test.jpg"><script>')["url"],
+        )
+
+        # a url with a non-http scheme is dropped entirely
+        self.assertEqual("", attachment_button("image/jpeg:javascript:alert(1)")["url"])
+
+        # geo coordinates which aren't numeric are dropped
+        self.assertEqual(
+            "http://www.openstreetmap.org/?mlat=0&mlon=0#map=18/0/0",
+            attachment_button('geo:x");alert(1)//,26.478109')["url"],
+        )
+        self.assertEqual(
+            "http://www.openstreetmap.org/?mlat=0&mlon=0#map=18/0/0",
+            attachment_button("geo:notacoordinate")["url"],
+        )
+
         context = Context(attachment_button("image/jpeg:https://example.com/test.jpg"))
         template = Template("""{% load sms %}{% attachment_button "image/jpeg:https://example.com/test.jpg" %}""")
 
