@@ -61,6 +61,7 @@ class Mocks:
         self._errors = []
 
         self.queued_batch_tasks = []
+        self.queued_handler_tasks = []
 
     def parse_query(self, query, *, cleaned=None, elastic_query=None, fields=None):
         def mock(org):
@@ -373,6 +374,7 @@ def _wrap_test_method(f, mock_client: bool, mock_queue: bool, instance, *args, *
 
     patch_get_client = None
     patch_queue_batch_task = None
+    patch_queue_handler_task = None
 
     try:
         if mock_client:
@@ -391,12 +393,30 @@ def _wrap_test_method(f, mock_client: bool, mock_queue: bool, instance, *args, *
 
             mock_queue_batch_task.side_effect = queue_batch_task
 
+            patch_queue_handler_task = patch("temba.mailroom.queue._queue_handler_task")
+            mock_queue_handler_task = patch_queue_handler_task.start()
+
+            def queue_handler_task(org_id, contact_id, task_type, task):
+                mocks.queued_handler_tasks.append(
+                    {
+                        "type": task_type.value,
+                        "org_id": org_id,
+                        "contact_id": contact_id,
+                        "task": task,
+                        "queued_on": timezone.now(),
+                    }
+                )
+
+            mock_queue_handler_task.side_effect = queue_handler_task
+
         return f(instance, mocks, *args, **kwargs)
     finally:
         if patch_get_client:
             patch_get_client.stop()
         if patch_queue_batch_task:
             patch_queue_batch_task.stop()
+        if patch_queue_handler_task:
+            patch_queue_handler_task.stop()
 
 
 def apply_modifiers(org, user, contacts, modifiers: list):
