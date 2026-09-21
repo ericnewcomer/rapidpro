@@ -32,6 +32,7 @@ from .fields import ExternalURLField, NameValidator
 from .templatetags.temba import oxford, short_datetime
 from .text import clean_string, decode_stream, generate_token, random_string, slugify_with, truncate, unsnakify
 from .timezones import TimeZoneFormField, timezone_to_country_code
+from .views import INVALID_HEADER_CHARS
 
 
 class InitTest(TembaTest):
@@ -954,3 +955,14 @@ class TestUUIDs(TembaTest):
 class ComposeTest(TembaTest):
     def test_empty_compose(self):
         self.assertEqual(compose_serialize(), {"text": "", "attachments": []})
+
+
+class HeaderValuesTest(TestCase):
+    def test_invalid_header_chars(self):
+        # printable characters are left alone
+        self.assertEqual("Simple message", INVALID_HEADER_CHARS.sub("", "Simple message"))
+        self.assertEqual("Ünicode ok ~!@#$%^&*()", INVALID_HEADER_CHARS.sub("", "Ünicode ok ~!@#$%^&*()"))
+
+        # control characters which could be used to inject additional headers are stripped
+        self.assertEqual("ErrorX-Injected: evil", INVALID_HEADER_CHARS.sub("", "Error\r\nX-Injected: evil"))
+        self.assertEqual("abc", INVALID_HEADER_CHARS.sub("", "a\x00b\x1fc\x7f"))
