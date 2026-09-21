@@ -91,6 +91,15 @@ class PublicTest(TembaTest):
         self.assertEqual(response.request["PATH_INFO"], "/")
         self.assertEqual(len(Lead.objects.all()), 2)
 
+        # a from_url in the post data is ignored rather than being passed to reverse()
+        post_data["from_url"] = "orgs.org_manage"
+        response = self.client.post(create_url, post_data, follow=True)
+        self.assertEqual(response.request["PATH_INFO"], "/")
+
+        post_data["from_url"] = "not.a.url.name"
+        response = self.client.post(create_url, post_data, follow=True)
+        self.assertEqual(response.request["PATH_INFO"], "/")
+
     def test_demo_coupon(self):
         coupon_url = reverse("demo.generate_coupon")
         response = self.client.get(coupon_url, follow=True)

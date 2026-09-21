@@ -146,10 +146,7 @@ class LeadCRUDL(SmartCRUDL):
             url = reverse("public.public_index")
             email = ", ".join(form.errors["email"])
 
-            if "from_url" in form.data:  # pragma: needs cover
-                url = reverse(form.data["from_url"])
-
-            return HttpResponseRedirect(url + "?errors=%s" % email)
+            return HttpResponseRedirect(url + "?%s" % urlencode({"errors": email}))
 
         def pre_save(self, obj):
             anon = get_anonymous_user()

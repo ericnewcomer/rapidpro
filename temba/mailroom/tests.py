@@ -522,19 +522,17 @@ class MailroomQueueTest(TembaTest):
         r = get_redis_connection()
         r.execute_command("select", 10)
 
-    @mock_mailroom(queue=False)
+    @mock_mailroom
     def test_queue_msg_handling(self, mr_mocks):
         with override_settings(TESTING=False):
             msg = sync.create_incoming(self.org, self.channel, "tel:12065551212", "Hello World", timezone.now())
 
         self.assertEqual(msg.msg_type, Msg.TYPE_TEXT)
-        self.assert_org_queued(self.org, "handler")
-        self.assert_contact_queued(msg.contact)
-        self.assert_queued_handler_task(
-            msg.contact,
+        self.assertEqual(
             {
                 "type": "msg_event",
                 "org_id": self.org.id,
+                "contact_id": msg.contact_id,
                 "task": {
                     "org_id": self.org.id,
                     "channel_id": self.channel.id,
@@ -548,31 +546,25 @@ class MailroomQueueTest(TembaTest):
                     "attachments": None,
                     "new_contact": False,
                 },
-                "queued_on": matchers.ISODate(),
+                "queued_on": matchers.Datetime(),
             },
+            mr_mocks.queued_handler_tasks[-1],
         )
 
-    @mock_mailroom(queue=False)
+    @mock_mailroom
     def test_queue_mo_miss_event(self, mr_mocks):
-        get_redis_connection("default").flushall()
         event = sync.create_event(self.channel, "tel:12065551212", ChannelEvent.TYPE_CALL_OUT, timezone.now())
 
-        r = get_redis_connection()
-
         # noop, this event isn't handled by mailroom
-        self.assertEqual(0, r.zcard("handler:active"))
-        self.assertEqual(0, r.zcard(f"handler:{self.org.id}"))
-        self.assertEqual(0, r.llen(f"c:{self.org.id}:{event.contact_id}"))
+        self.assertEqual([], mr_mocks.queued_handler_tasks)
 
         event = sync.create_event(self.channel, "tel:12065551515", ChannelEvent.TYPE_CALL_IN_MISSED, timezone.now())
 
-        self.assert_org_queued(self.org, "handler")
-        self.assert_contact_queued(event.contact)
-        self.assert_queued_handler_task(
-            event.contact,
+        self.assertEqual(
             {
                 "type": "mo_miss",
                 "org_id": event.contact.org.id,
+                "contact_id": event.contact.id,
                 "task": {
                     "channel_id": self.channel.id,
                     "contact_id": event.contact.id,
@@ -580,12 +572,13 @@ class MailroomQueueTest(TembaTest):
                     "extra": None,
                     "id": event.id,
                     "new_contact": False,
-                    "occurred_on": matchers.ISODate(),
+                    "occurred_on": matchers.Datetime(),
                     "org_id": event.contact.org.id,
                     "urn_id": event.contact.urns.get().id,
                 },
-                "queued_on": matchers.ISODate(),
+                "queued_on": matchers.Datetime(),
             },
+            mr_mocks.queued_handler_tasks[-1],
         )
 
     def test_queue_broadcast(self):
@@ -770,36 +763,6 @@ class MailroomQueueTest(TembaTest):
         queued_org = json.loads(r.zrange(f"{queue}:active", 0, 1)[0])
 
         self.assertEqual(queued_org, org.id)
-
-    def assert_contact_queued(self, contact):
-        r = get_redis_connection()
-
-        # check we have one contact handle event queued for its org
-        self.assertEqual(r.zcard(f"handler:{contact.org.id}"), 1)
-
-        # load and check that task
-        task = json.loads(r.zrange(f"handler:{contact.org.id}", 0, 1)[0])
-
-        self.assertEqual(
-            task,
-            {
-                "type": "handle_contact_event",
-                "org_id": contact.org.id,
-                "task": {"contact_id": contact.id},
-                "queued_on": matchers.ISODate(),
-            },
-        )
-
-    def assert_queued_handler_task(self, contact, expected_task):
-        r = get_redis_connection()
-
-        # check we have one task in the contact's queue
-        self.assertEqual(r.llen(f"c:{contact.org.id}:{contact.id}"), 1)
-
-        # load and check that task
-        actual_task = json.loads(r.rpop(f"c:{contact.org.id}:{contact.id}"))
-
-        self.assertEqual(actual_task, expected_task)
 
     def assert_queued_batch_task(self, org, expected_task):
         r = get_redis_connection()

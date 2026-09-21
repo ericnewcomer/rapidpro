@@ -861,6 +861,23 @@ class EndpointsTest(APITest):
         self.assertEqual(client.get(reverse("api.v2.fields") + ".json").status_code, 200)
         self.assertEqual(client.get(reverse("api.v2.campaigns") + ".json").status_code, 403)
 
+    def test_authenticate_with_2fa(self):
+        auth_url = reverse("api.v2.authenticate")
+        self.editor.enable_2fa()
+
+        # a correct password alone doesn't authenticate a user who has 2FA enabled
+        response = self.client.post(auth_url, {"username": "editor@nyaruka.com", "password": "Qwerty123", "role": "E"})
+        self.assertEqual(response.status_code, 403)
+
+        # no token was issued and no session was started
+        self.assertFalse(APIToken.objects.filter(user=self.editor).exists())
+        self.assertNotIn("_auth_user_id", self.client.session)
+
+        # whereas a user without 2FA is unaffected
+        response = self.client.post(auth_url, {"username": "admin@nyaruka.com", "password": "Qwerty123", "role": "A"})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(1, len(response.json()["tokens"]))
+
     @patch("temba.flows.models.FlowStart.create")
     def test_transactions(self, mock_flowstart_create):
         """
