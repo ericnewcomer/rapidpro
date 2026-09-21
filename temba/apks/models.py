@@ -1,10 +1,16 @@
+import re
 from gettext import gettext as _
 
 from markdown import markdown
 
 from django.db import models
 from django.utils import timezone
+from django.utils.html import escape
 from django.utils.safestring import mark_safe
+
+# link and image targets which would execute script if we let them through - markdown escapes ampersands and trims
+# leading whitespace before it writes these attributes, so matching on the literal scheme is enough
+UNSAFE_URL_SCHEME = re.compile(r'(href|src)="\s*(?:javascript|data|vbscript):[^"]*"', re.IGNORECASE)
 
 
 class Apk(models.Model):
@@ -35,7 +41,11 @@ class Apk(models.Model):
     created_on = models.DateTimeField(default=timezone.now)
 
     def markdown_description(self):
-        return mark_safe(markdown(self.description))
+        # descriptions are entered by staff but are rendered to any user claiming an Android channel, so escape any
+        # embedded HTML and neutralize script bearing link targets before marking the result as safe
+        html = markdown(escape(self.description))
+
+        return mark_safe(UNSAFE_URL_SCHEME.sub(r'\1="#"', html))
 
     class Meta:
         unique_together = ("apk_type", "version", "pack")
