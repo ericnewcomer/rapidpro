@@ -892,8 +892,13 @@ class OrgTest(TembaTest):
         mock_send_temba_email.reset_mock()
         post_data = dict(email="existing@nyaruka.com")
 
+        FailedLogin.objects.create(username="existing@nyaruka.com")
+
         response = self.client.post(forget_url, post_data, follow=True)
         self.assertEqual(200, response.status_code)
+
+        # requesting a recovery email shouldn't clear failed logins as that would defeat the lockout
+        self.assertEqual(1, FailedLogin.objects.filter(username__iexact="existing@nyaruka.com").count())
 
         token_obj = RecoveryToken.objects.filter(user=user).first()
 

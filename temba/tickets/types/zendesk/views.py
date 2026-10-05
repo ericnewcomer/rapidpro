@@ -211,6 +211,16 @@ class AdminUIView(SmartFormView):
 
             return data
 
+        def clean_return_url(self):
+            # this ends up as a form action on our domain so restrict it to Zendesk URLs
+            data = self.cleaned_data["return_url"]
+            parsed = urlparse(data)
+            hostname = parsed.hostname or ""
+            if parsed.scheme != "https" or not (hostname == "zendesk.com" or hostname.endswith(".zendesk.com")):
+                raise forms.ValidationError(_("Invalid return URL."))
+
+            return data
+
     form_class = Form
     template_name = "tickets/types/zendesk/admin_ui.html"
     return_template = "tickets/types/zendesk/admin_ui_return.html"

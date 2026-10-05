@@ -222,6 +222,27 @@ class ZendeskTypeTest(TembaTest):
         )
         self.assertFormError(response, "form", "secret", "Secret is incorrect.")
 
+        # try submitting with a return URL that isn't Zendesk
+        for return_url in (
+            "javascript:alert(document.cookie)",
+            "https://evil.com/zendesk.com",
+            "http://example.zendesk.com",
+            "https://example.zendesk.com.evil.com",
+        ):
+            response = self.client.post(
+                admin_url,
+                {
+                    "name": "My Channel",
+                    "secret": "SECRET346",
+                    "return_url": return_url,
+                    "subdomain": "example",
+                    "locale": "en-US",
+                    "instance_push_id": "push1234",
+                    "zendesk_access_token": "sesame",
+                },
+            )
+            self.assertFormError(response, "form", "return_url", "Invalid return URL.")
+
         # try submitting with correct secret
         response = self.client.post(
             admin_url,
