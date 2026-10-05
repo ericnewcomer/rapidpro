@@ -892,8 +892,13 @@ class OrgTest(TembaTest):
         mock_send_temba_email.reset_mock()
         post_data = dict(email="existing@nyaruka.com")
 
+        FailedLogin.objects.create(username="existing@nyaruka.com")
+
         response = self.client.post(forget_url, post_data, follow=True)
         self.assertEqual(200, response.status_code)
+
+        # requesting a recovery email shouldn't clear failed logins as that would defeat the lockout
+        self.assertEqual(1, FailedLogin.objects.filter(username__iexact="existing@nyaruka.com").count())
 
         token_obj = RecoveryToken.objects.filter(user=user).first()
 
@@ -3968,6 +3973,12 @@ class BulkExportTest(TembaTest):
         response = self.client.get(reverse("orgs.orgimport_read", args=(org_import.id,)))
         self.assertEqual(200, response.status_code)
         self.assertContains(response, "Finished successfully")
+
+        # an import can only be read by users in its own org
+        self.login(self.admin2)
+        response = self.client.get(reverse("orgs.orgimport_read", args=(org_import.id,)))
+        self.assertLoginRedirect(response)
+        self.login(self.admin)
 
         flow = self.org.flows.filter(name="Favorites").get()
         self.assertEqual(Flow.CURRENT_SPEC_VERSION, flow.version_number)

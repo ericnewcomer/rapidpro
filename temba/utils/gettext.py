@@ -7,11 +7,14 @@ import pycountry
 from django.conf import settings
 from django.core.files.storage import default_storage
 
-from .uuid import uuid4
+from .uuid import is_uuid, uuid4
 
 
 def po_get_path(org, uuid):
-    return os.path.join(settings.STORAGE_ROOT_DIR, str(org.id), "po_imports", uuid + ".po")
+    if not is_uuid(uuid):  # uuid is user provided so check it before using it in a path
+        raise ValueError(f"invalid PO file uuid: {uuid}")
+
+    return os.path.join(settings.STORAGE_ROOT_DIR, str(org.id), "po_imports", str(uuid) + ".po")
 
 
 def po_save(org, data):

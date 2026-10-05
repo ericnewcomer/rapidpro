@@ -24,7 +24,7 @@ from temba.utils import json, uuid
 from temba.utils.compose import compose_serialize
 from temba.utils.templatetags.temba import format_datetime, icon
 
-from . import chunk_list, countries, format_number, languages, percentage, redact, sizeof_fmt, str_to_bool
+from . import chunk_list, countries, format_number, gettext, languages, percentage, redact, sizeof_fmt, str_to_bool
 from .crons import clear_cron_stats, cron_task
 from .dates import date_range, datetime_to_str, datetime_to_timestamp, timestamp_to_datetime
 from .email import is_valid_address, send_simple_email
@@ -161,6 +161,19 @@ class DatesTest(TembaTest):
             list(date_range(date(2015, 1, 29), date(2015, 2, 2))),
         )
         self.assertEqual([], list(date_range(date(2015, 1, 29), date(2015, 1, 29))))
+
+
+class GettextTest(TembaTest):
+    def test_po_get_path(self):
+        self.assertEqual(
+            f"test_orgs/{self.org.id}/po_imports/0a3d96a0-6e3f-4efb-b327-b45b5f13a3ae.po",
+            gettext.po_get_path(self.org, "0a3d96a0-6e3f-4efb-b327-b45b5f13a3ae"),
+        )
+
+        # anything which isn't a UUID is rejected before it can become part of a path
+        for bad_uuid in ("", "abc", "../../2/po_imports/0a3d96a0-6e3f-4efb-b327-b45b5f13a3ae", "/etc/passwd"):
+            with self.assertRaises(ValueError):
+                gettext.po_get_path(self.org, bad_uuid)
 
 
 class CountriesTest(TembaTest):

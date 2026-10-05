@@ -791,6 +791,15 @@ class EndpointsTest(APITest):
         response = self.client.post(auth_url, {"username": "admin@nyaruka.com", "password": "XXXX", "role": "A"})
         self.assertEqual(response.status_code, 403)
 
+        # can't authenticate with just a password if the user has two-factor enabled
+        self.admin.enable_2fa()
+
+        response = self.client.post(auth_url, {"username": "admin@nyaruka.com", "password": "Qwerty123", "role": "A"})
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(APIToken.objects.filter(user=self.admin).exists())
+
+        self.admin.disable_2fa()
+
         # try to authenticate with invalid role
         response = self.client.post(auth_url, {"username": "admin@nyaruka.com", "password": "Qwerty123", "role": "X"})
         self.assertFormError(response, "form", "role", "Select a valid choice. X is not one of the available choices.")

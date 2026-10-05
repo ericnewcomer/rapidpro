@@ -774,7 +774,6 @@ class UserCRUDL(SmartCRUDL):
 
                 token = "".join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(32))
                 RecoveryToken.objects.create(token=token, user=user)
-                FailedLogin.objects.filter(username__iexact=user.username).delete()
 
                 context = dict(user=user, path=f'{reverse("users.user_recover", args=[token])}')
                 send_template_email(email, subject, template, context, self.request.branding)
@@ -3103,7 +3102,7 @@ class OrgImportCRUDL(SmartCRUDL):
             obj.start_async()
             return obj
 
-    class Read(SpaMixin, OrgPermsMixin, SmartReadView):
+    class Read(SpaMixin, OrgObjPermsMixin, SmartReadView):
         menu_path = "/settings/workspace"
 
         def derive_title(self):
