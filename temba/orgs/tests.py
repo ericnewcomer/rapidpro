@@ -3974,6 +3974,12 @@ class BulkExportTest(TembaTest):
         self.assertEqual(200, response.status_code)
         self.assertContains(response, "Finished successfully")
 
+        # an import can only be read by users in its own org
+        self.login(self.admin2)
+        response = self.client.get(reverse("orgs.orgimport_read", args=(org_import.id,)))
+        self.assertLoginRedirect(response)
+        self.login(self.admin)
+
         flow = self.org.flows.filter(name="Favorites").get()
         self.assertEqual(Flow.CURRENT_SPEC_VERSION, flow.version_number)
 

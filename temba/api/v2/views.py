@@ -334,6 +334,11 @@ class AuthenticateView(SmartFormView):
 
         user = authenticate(username=username, password=password)
         if user and user.is_active:
+            # a password isn't sufficient to authenticate a user who has enabled two-factor as this view has no
+            # second step - they can access their tokens from the API explorer after logging in normally
+            if user.settings.two_factor_enabled:
+                return HttpResponse(status=403)
+
             login(self.request, user)
 
             role = OrgRole.from_code(role_code)

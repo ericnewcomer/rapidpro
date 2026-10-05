@@ -3102,7 +3102,7 @@ class OrgImportCRUDL(SmartCRUDL):
             obj.start_async()
             return obj
 
-    class Read(SpaMixin, OrgPermsMixin, SmartReadView):
+    class Read(SpaMixin, OrgObjPermsMixin, SmartReadView):
         menu_path = "/settings/workspace"
 
         def derive_title(self):
