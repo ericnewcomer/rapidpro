@@ -645,6 +645,10 @@ class ChannelTest(TembaTest, CRUDLTestMixin):
         self.assertEqual(response.context["channel_types"]["SOCIAL_MEDIA"][-1].code, "ZVW")
 
     def test_sync_unclaimed(self):
+        # only android channels can sync
+        self.unclaimed_channel.channel_type = "A"
+        self.unclaimed_channel.save(update_fields=("channel_type",))
+
         response = self.sync(self.unclaimed_channel, cmds=[])
         self.assertEqual(401, response.status_code)
 
