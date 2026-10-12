@@ -42,7 +42,7 @@ class ConnectView(BaseConnectView):
             org = self.request.org
             data = self.cleaned_data["subdomain"]
 
-            if not re.match(r"^[\w\-]+", data):
+            if not re.fullmatch(r"[a-zA-Z0-9\-]+", data):
                 raise forms.ValidationError(_("Not a valid subdomain name."))
 
             for_domain = org.ticketers.filter(is_active=True, ticketer_type=ZendeskType.slug, config__subdomain=data)
@@ -89,6 +89,12 @@ class ConnectView(BaseConnectView):
 
         code = request.GET["code"]
         subdomain = request.GET["state"]
+
+        # state should be the subdomain we sent to Zendesk and nothing else
+        if not re.fullmatch(r"[a-zA-Z0-9\-]+", subdomain):
+            messages.error(request, _("Invalid subdomain."))
+            return super(ConnectView, self).get(request, *args, **kwargs)
+
         client = Client(subdomain)
         try:
             access_token = client.get_oauth_token(
@@ -270,6 +276,11 @@ class AdminUIView(SmartFormView):
 
     def form_valid(self, form):
         from .type import ZendeskType
+
+        # check that the return URL is actually on Zendesk as our return template will POST to it
+        return_url = urlparse(form.cleaned_data["return_url"])
+        if return_url.scheme != "https" or not return_url.netloc.lower().endswith(".zendesk.com"):
+            return HttpResponse("Invalid return URL", status=400)
 
         subdomain = form.cleaned_data["subdomain"]
         secret = form.cleaned_data["secret"]

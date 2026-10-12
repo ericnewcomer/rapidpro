@@ -40,6 +40,27 @@ class AndroidTest(TembaTest):
         with self.assertRaises(ValueError):
             self.client.post(reverse("register"), json.dumps(reg_data), content_type="application/json")
 
+    def test_register_uuid_of_other_channel_type(self):
+        twilio = self.create_channel("T", "Twilio", "+12065551212")
+
+        reg_data = dict(
+            cmds=[dict(cmd="fcm", fcm_id="FCM111", uuid=str(twilio.uuid)), dict(cmd="status", cc="RW", dev="Nexus")]
+        )
+
+        response = self.client.post(reverse("register"), json.dumps(reg_data), content_type="application/json")
+        self.assertEqual(200, response.status_code)
+
+        # should get the masked response and the existing channel should be untouched
+        self.assertEqual(
+            response.json(),
+            dict(cmds=[dict(cmd="reg", relayer_claim_code="*********", relayer_secret="0" * 64, relayer_id=-1)]),
+        )
+
+        twilio.refresh_from_db()
+        self.assertIsNone(twilio.claim_code)
+        self.assertIsNone(twilio.secret)
+        self.assertEqual(self.org, twilio.org)
+
     def test_get_sync_commands(self):
         joe = self.create_contact("Joe Blow", phone="123")
         ContactURN.create(self.org, joe, "tel:789")

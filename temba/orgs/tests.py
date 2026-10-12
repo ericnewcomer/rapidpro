@@ -905,6 +905,13 @@ class OrgTest(TembaTest):
         self.assertNotIn("{{", email_args[2])
         self.assertEqual(email_args[4], ["existing@nyaruka.com"])
 
+        # requesting a recovery email doesn't clear failed login records
+        FailedLogin.objects.create(username="existing@nyaruka.com")
+
+        response = self.client.post(forget_url, post_data, follow=True)
+        self.assertEqual(200, response.status_code)
+        self.assertEqual(1, FailedLogin.objects.filter(username__iexact="existing@nyaruka.com").count())
+
     def test_user_update(self):
         update_url = reverse("orgs.user_edit")
 

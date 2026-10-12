@@ -52,7 +52,7 @@ def sync(request, channel_id):
         return HttpResponse(status=500, content="POST Required")
 
     commands = []
-    channel = Channel.objects.filter(id=channel_id, is_active=True).first()
+    channel = Channel.objects.filter(id=channel_id, is_active=True, channel_type="A").first()
     if not channel:
         return JsonResponse(dict(cmds=[dict(cmd="rel", relayer_id=channel_id)]))
 

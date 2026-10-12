@@ -1,4 +1,5 @@
 import itertools
+from datetime import timedelta
 from enum import Enum
 
 from rest_framework import generics, status, views
@@ -7,12 +8,15 @@ from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.reverse import reverse
+from smartmin.users.models import FailedLogin
 from smartmin.views import SmartFormView, SmartTemplateView
 
 from django import forms
+from django.conf import settings
 from django.contrib.auth import authenticate, login
 from django.db.models import Count, Prefetch, Q
 from django.http import HttpResponse, JsonResponse
+from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from django.views.decorators.csrf import csrf_exempt
 
@@ -332,8 +336,27 @@ class AuthenticateView(SmartFormView):
         password = form.cleaned_data.get("password")
         role_code = form.cleaned_data.get("role")
 
+        # apply the same failed login limits that smartmin uses for regular logins
+        lockout_timeout = getattr(settings, "USER_LOCKOUT_TIMEOUT", 10)
+        failed_login_limit = getattr(settings, "USER_FAILED_LOGIN_LIMIT", 5)
+
+        failures = FailedLogin.objects.filter(username__iexact=username)
+
+        # if the failures reset after a period of time, then limit our query to that interval
+        if lockout_timeout > 0:
+            failures = failures.filter(failed_on__gt=timezone.now() - timedelta(minutes=lockout_timeout))
+
+        if failures.count() >= failed_login_limit:
+            return HttpResponse(status=403)
+
         user = authenticate(username=username, password=password)
         if user and user.is_active:
+            # this view has no support for a second factor so don't allow it to bypass 2FA
+            if user.settings.two_factor_enabled:
+                return HttpResponse(status=403)
+
+            FailedLogin.objects.filter(username__iexact=username).delete()
+
             login(self.request, user)
 
             role = OrgRole.from_code(role_code)
@@ -350,6 +373,7 @@ class AuthenticateView(SmartFormView):
 
             return JsonResponse({"tokens": tokens})
         else:
+            FailedLogin.objects.create(username=username)
             return HttpResponse(status=403)
 
 

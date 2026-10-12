@@ -63,7 +63,7 @@ class ClaimView(ClaimViewMixin, SmartFormView):
             from .type import RocketChatType
 
             org = self.request.org
-            base_url = RE_BASE_URL.search(self.cleaned_data.get("base_url", ""))
+            base_url = RE_BASE_URL.match(self.cleaned_data.get("base_url", ""))
             if base_url:
                 base_url = base_url.group()
             else:

@@ -75,6 +75,16 @@ class MediaTest(TembaTest):
         self.assertEqual("passwd.jpg", Media.clean_name(".passwd", "image/jpeg"))
         self.assertEqual("tést[0].jpg", Media.clean_name("tést[0]/^..\\", "image/jpeg"))
 
+        # extensions that browsers might render as markup aren't trusted
+        self.assertEqual("page.png", Media.clean_name("page.html", "image/png"))
+        self.assertEqual("doc.pdf", Media.clean_name("doc.svg", "application/pdf"))
+
+    def test_is_allowed_type(self):
+        self.assertTrue(Media.is_allowed_type("image/jpeg"))
+        self.assertTrue(Media.is_allowed_type("application/pdf"))
+        self.assertFalse(Media.is_allowed_type("image/svg+xml"))
+        self.assertFalse(Media.is_allowed_type("application/zip"))
+
     @mock_uuids
     def test_from_upload(self):
         media = Media.from_upload(

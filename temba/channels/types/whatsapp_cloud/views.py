@@ -1,4 +1,4 @@
-from random import randint
+from secrets import randbelow
 
 import requests
 from smartmin.views import SmartFormView, SmartModelActionView, SmartTemplateView
@@ -151,7 +151,12 @@ class ClaimView(ClaimViewMixin, SmartFormView):
         business_id = form.cleaned_data["business_id"]
         currency = form.cleaned_data["currency"]
         message_template_namespace = form.cleaned_data["message_template_namespace"]
-        pin = str(randint(100000, 999999))
+        pin = str(randbelow(900000) + 100000)
+
+        # these are Facebook API ids and should never be anything but numeric as they end up in API URLs
+        if not waba_id.isdigit() or not phone_number_id.isdigit():
+            form._errors["__all__"] = form.error_class([_("Invalid WhatsApp Business Account details.")])
+            return self.form_invalid(form)
 
         name = truncate(f"{number} - {verified_name}", 64)
 

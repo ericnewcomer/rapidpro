@@ -10,6 +10,7 @@ import iso8601
 import pytz
 from rest_framework import serializers
 from rest_framework.test import APIClient
+from smartmin.users.models import FailedLogin
 
 from django.conf import settings
 from django.contrib.auth.models import Group
@@ -860,6 +861,22 @@ class EndpointsTest(APITest):
         self.assertEqual(client.get(reverse("api.v2.contacts") + ".json").status_code, 200)
         self.assertEqual(client.get(reverse("api.v2.fields") + ".json").status_code, 200)
         self.assertEqual(client.get(reverse("api.v2.campaigns") + ".json").status_code, 403)
+
+        # users with 2FA enabled can't authenticate via this endpoint as it has no second factor
+        self.admin.enable_2fa()
+        response = self.client.post(auth_url, {"username": "admin@nyaruka.com", "password": "Qwerty123", "role": "A"})
+        self.assertEqual(response.status_code, 403)
+
+        # failed logins are subject to the same lockout as regular logins
+        for i in range(5):
+            response = self.client.post(auth_url, {"username": "editor@nyaruka.com", "password": "XXXX", "role": "E"})
+            self.assertEqual(response.status_code, 403)
+
+        self.assertEqual(5, FailedLogin.objects.filter(username__iexact="editor@nyaruka.com").count())
+
+        # even with the correct password
+        response = self.client.post(auth_url, {"username": "editor@nyaruka.com", "password": "Qwerty123", "role": "E"})
+        self.assertEqual(response.status_code, 403)
 
     @patch("temba.flows.models.FlowStart.create")
     def test_transactions(self, mock_flowstart_create):
