@@ -61,7 +61,7 @@ class ConnectView(BaseConnectView):
             from .type import RocketChatType
 
             org = self.request.org
-            base_url = RE_BASE_URL.search(self.cleaned_data.get("base_url") or "")
+            base_url = RE_BASE_URL.match(self.cleaned_data.get("base_url") or "")
             if base_url:
                 base_url = base_url.group()
             else:

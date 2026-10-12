@@ -43,6 +43,8 @@ class Media(models.Model):
     """
 
     ALLOWED_CONTENT_TYPES = ("image/*", "audio/*", "video/*", "application/pdf")
+    BLOCKED_CONTENT_TYPES = ("image/svg+xml",)  # can contain scripts
+    UNSAFE_EXTENSIONS = ("html", "htm", "xhtml", "xht", "xml", "svg", "js", "mjs", "css", "swf")  # browser renderable
     MAX_UPLOAD_SIZE = 1024 * 1024 * 25  # 25MB
 
     STATUS_PENDING = "P"
@@ -69,6 +71,8 @@ class Media(models.Model):
 
     @classmethod
     def is_allowed_type(cls, content_type: str) -> bool:
+        if content_type in cls.BLOCKED_CONTENT_TYPES:
+            return False
         for allowed_type in cls.ALLOWED_CONTENT_TYPES:
             if fnmatch(content_type, allowed_type):
                 return True
@@ -87,7 +91,12 @@ class Media(models.Model):
         base_name, extension = os.path.splitext(filename)
         base_name = re.sub(r"[^\w\-\[\]\(\) ]", "", base_name).strip()[:255] or "file"
 
-        if not extension or len(extension) < 2 or not extension[1:].isalnum():
+        if (
+            not extension
+            or len(extension) < 2
+            or not extension[1:].isalnum()
+            or extension[1:].lower() in cls.UNSAFE_EXTENSIONS
+        ):
             extension = mimetypes.guess_extension(content_type) or ".bin"
 
         return base_name + extension

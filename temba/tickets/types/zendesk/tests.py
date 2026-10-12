@@ -98,6 +98,13 @@ class ZendeskTypeTest(TembaTest):
             response = self.client.get(connect_url + "?code=please&state=temba")
             self.assertContains(response, "Unable to request OAuth token.")
 
+            # state values that aren't valid subdomains are rejected before any token request is made
+            mock_get_oauth_token.reset_mock()
+
+            response = self.client.get(connect_url + "?code=please&state=attacker.com%23")
+            self.assertContains(response, "Invalid subdomain.")
+            mock_get_oauth_token.assert_not_called()
+
             # but if it succeeds...
             mock_get_oauth_token.side_effect = None
             mock_get_oauth_token.return_value = "236272"
@@ -221,6 +228,21 @@ class ZendeskTypeTest(TembaTest):
             },
         )
         self.assertFormError(response, "form", "secret", "Secret is incorrect.")
+
+        # try submitting with a return URL that isn't on Zendesk
+        response = self.client.post(
+            admin_url,
+            {
+                "name": "My Channel",
+                "secret": "SECRET346",
+                "return_url": "javascript:alert(document.domain)",
+                "subdomain": "example",
+                "locale": "en-US",
+                "instance_push_id": "push1234",
+                "zendesk_access_token": "sesame",
+            },
+        )
+        self.assertEqual(400, response.status_code)
 
         # try submitting with correct secret
         response = self.client.post(

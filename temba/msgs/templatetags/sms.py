@@ -1,3 +1,5 @@
+from urllib.parse import quote
+
 from django import template
 from django.utils.safestring import mark_safe
 
@@ -124,13 +126,25 @@ def attachment_button(attachment: str, show_thumb=False) -> dict:
     if category == "geo":
         preview = url
 
-        (lat, lng) = url.split(",")
-        url = "http://www.openstreetmap.org/?mlat=%(lat)s&mlon=%(lng)s#map=18/%(lat)s/%(lng)s" % {
-            "lat": lat,
-            "lng": lng,
-        }
+        try:
+            (lat, lng) = (float(c) for c in url.split(","))
+            url = "http://www.openstreetmap.org/?mlat=%(lat)s&mlon=%(lng)s#map=18/%(lat)s/%(lng)s" % {
+                "lat": lat,
+                "lng": lng,
+            }
+        except ValueError:
+            preview, url = "", ""
     else:
         preview = (sub_type or category).upper()  # preview the sub type if it exists or category
+
+        # only link out to HTTP URLs and percent-encode characters which could otherwise break out of the HTML
+        # attributes that templates put these URLs in
+        if not url.lower().startswith(("http://", "https://")):
+            url = ""
+        url = quote(url, safe=":/?#[]@!$&()*+,;=%~.-_")
+
+        if thumb:
+            thumb = url
 
     return {
         "content_type": content_type,

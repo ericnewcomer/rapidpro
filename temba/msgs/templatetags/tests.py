@@ -72,6 +72,28 @@ class TestSMSTagLibrary(TembaTest):
             attachment_button("geo:-35.998287,26.478109"),
         )
 
+        # geo coordinates that aren't numeric are ignored
+        self.assertEqual(
+            {
+                "content_type": "geo",
+                "category": "geo",
+                "preview": "",
+                "url": "",
+                "is_playable": False,
+                "thumb": None,
+            },
+            attachment_button('geo:1");alert(1);//,2'),
+        )
+
+        # only HTTP URLs are allowed
+        self.assertEqual("", attachment_button("image/jpeg:javascript:alert(1)")["url"])
+
+        # characters that could break out of HTML attributes are encoded
+        self.assertEqual(
+            "https://example.com/%22%3E%3Cimg%20src=x%20onerror=alert(1)%3E.jpg",
+            attachment_button('image/jpeg:https://example.com/"><img src=x onerror=alert(1)>.jpg')["url"],
+        )
+
         context = Context(attachment_button("image/jpeg:https://example.com/test.jpg"))
         template = Template("""{% load sms %}{% attachment_button "image/jpeg:https://example.com/test.jpg" %}""")
 
