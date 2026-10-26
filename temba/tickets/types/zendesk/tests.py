@@ -73,6 +73,10 @@ class ZendeskTypeTest(TembaTest):
         response = self.client.post(connect_url, {"subdomain": "%x.&y"})
         self.assertFormError(response, "form", "subdomain", ["Not a valid subdomain name."])
 
+        # try with subdomain that only starts with valid characters
+        response = self.client.post(connect_url, {"subdomain": "acme.evil.com"})
+        self.assertFormError(response, "form", "subdomain", ["Not a valid subdomain name."])
+
         # try with subdomain already taken by this org
         Ticketer.create(
             self.org, self.admin, ticketer_type=ZendeskType.slug, name="Existing", config={"subdomain": "chispa"}
@@ -89,6 +93,12 @@ class ZendeskTypeTest(TembaTest):
         # if user doesn't authenticate, Zendesk returns to us with an error, which we display to the user
         response = self.client.get(connect_url + "?error=auth&error_description=thing%20went%20wrong")
         self.assertContains(response, "thing went wrong")
+
+        # a state value that isn't a valid subdomain is rejected before any token request is made
+        with patch("temba.tickets.types.zendesk.client.Client.get_oauth_token") as mock_get_oauth_token:
+            response = self.client.get(connect_url + "?code=please&state=evil.com%2Fpwn%3Fx%3D")
+            self.assertContains(response, "Invalid subdomain.")
+            mock_get_oauth_token.assert_not_called()
 
         # if user does authenticate, zendesk gives us an authorization code which we use to request a token
         with patch("temba.tickets.types.zendesk.client.Client.get_oauth_token") as mock_get_oauth_token:

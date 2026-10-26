@@ -1,8 +1,8 @@
 import logging
+import re
 from urllib.parse import quote, urlencode
 
 import requests
-from gunicorn.http.wsgi import HEADER_VALUE_RE
 
 from django import forms
 from django.conf import settings
@@ -24,6 +24,10 @@ logger = logging.getLogger(__name__)
 TEMBA_MENU_SELECTION = "temba_menu_selection"
 TEMBA_CONTENT_ONLY = "x-temba-content-only"
 TEMBA_VERSION = "x-temba-version"
+
+# control characters which can't be included in a response header value (gunicorn 23 changed the meaning of the
+# HEADER_VALUE_RE regex previously imported here, so we define our own)
+HEADER_VALUE_RE = re.compile(r"[\x00-\x1F\x7F]")
 
 
 class NoNavMixin(View):
