@@ -42,7 +42,7 @@ class ConnectView(BaseConnectView):
             org = self.request.org
             data = self.cleaned_data["subdomain"]
 
-            if not re.match(r"^[\w\-]+", data):
+            if not re.fullmatch(r"[\w\-]+", data):
                 raise forms.ValidationError(_("Not a valid subdomain name."))
 
             for_domain = org.ticketers.filter(is_active=True, ticketer_type=ZendeskType.slug, config__subdomain=data)
@@ -89,6 +89,13 @@ class ConnectView(BaseConnectView):
 
         code = request.GET["code"]
         subdomain = request.GET["state"]
+
+        # state is attacker-controllable so it must be validated as a plain subdomain before it is used to build the
+        # URL that our OAuth credentials are posted to
+        if not re.fullmatch(r"[\w\-]+", subdomain):
+            messages.error(request, _("Invalid subdomain."))
+            return super(ConnectView, self).get(request, *args, **kwargs)
+
         client = Client(subdomain)
         try:
             access_token = client.get_oauth_token(
