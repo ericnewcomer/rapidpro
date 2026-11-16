@@ -75,6 +75,21 @@ class MediaTest(TembaTest):
         self.assertEqual("passwd.jpg", Media.clean_name(".passwd", "image/jpeg"))
         self.assertEqual("tést[0].jpg", Media.clean_name("tést[0]/^..\\", "image/jpeg"))
 
+        # extensions that could be served as active content are replaced with one from the content type
+        self.assertEqual("foo.png", Media.clean_name("foo.html", "image/png"))
+        self.assertEqual("foo.png", Media.clean_name("foo.svg", "image/png"))
+        self.assertEqual("foo.png", Media.clean_name("foo.XHTML", "image/png"))
+
+    def test_is_allowed_type(self):
+        self.assertTrue(Media.is_allowed_type("image/png"))
+        self.assertTrue(Media.is_allowed_type("audio/mp4"))
+        self.assertTrue(Media.is_allowed_type("application/pdf"))
+        self.assertFalse(Media.is_allowed_type("application/octet-stream"))
+
+        # SVGs can contain scripts so are never allowed even though they match image/*
+        self.assertFalse(Media.is_allowed_type("image/svg+xml"))
+        self.assertFalse(Media.is_allowed_type("image/SVG+XML"))
+
     @mock_uuids
     def test_from_upload(self):
         media = Media.from_upload(

@@ -1,3 +1,5 @@
+import re
+
 import requests
 from smartmin.views import SmartFormView
 
@@ -51,7 +53,19 @@ class ClaimView(ClaimViewMixin, SmartFormView):
 
         facebook_namespace = forms.CharField(max_length=128, help_text=_("The namespace for your WhatsApp templates"))
 
+        def clean_facebook_template_list_domain(self):
+            # the domain is interpolated into request URLs so it must be a plain hostname, and not something local
+            data = self.cleaned_data["facebook_template_list_domain"]
+            if not re.fullmatch(r"[\w\.\-]+", data):
+                raise forms.ValidationError(_("Invalid domain name."))
+
+            ExternalURLField().clean(f"https://{data}")
+            return data
+
         def clean(self):
+            if self.errors:
+                return self.cleaned_data
+
             # first check that our phone number looks sane
             country = self.cleaned_data["country"]
             normalized = URN.normalize_number(self.cleaned_data["number"], country)

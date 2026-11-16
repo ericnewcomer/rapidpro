@@ -1,3 +1,5 @@
+import re
+
 import phonenumbers
 import requests
 from smartmin.views import SmartFormView
@@ -6,7 +8,7 @@ from django import forms
 from django.forms import ValidationError
 from django.utils.translation import gettext_lazy as _
 
-from temba.utils.fields import SelectWidget
+from temba.utils.fields import ExternalURLField, SelectWidget
 
 from ...models import Channel
 from ...views import ALL_COUNTRIES, ClaimViewMixin
@@ -41,7 +43,19 @@ class SignalWireClaimView(ClaimViewMixin, SmartFormView):
             help_text=_("The API token to use to authenticate ex: FPd199eb93e878f8a3tw9ttna313914tnauwy"),
         )
 
+        def clean_domain(self):
+            # the domain is interpolated into request URLs so it must be a plain hostname, and not something local
+            data = self.cleaned_data["domain"]
+            if not re.fullmatch(r"[\w\.\-]+", data):
+                raise ValidationError(_("Invalid domain name."))
+
+            ExternalURLField().clean(f"https://{data}")
+            return data
+
         def clean(self):
+            if self.errors:
+                return self.cleaned_data
+
             sid = self.cleaned_data["project_key"]
             token = self.cleaned_data["api_token"]
             domain = self.cleaned_data["domain"]

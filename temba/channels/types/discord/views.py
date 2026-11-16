@@ -5,6 +5,8 @@ from django import forms
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
 
+from temba.utils.fields import ExternalURLField
+
 from ...models import Channel
 from ...views import ClaimViewMixin
 
@@ -12,7 +14,7 @@ from ...views import ClaimViewMixin
 class ClaimView(ClaimViewMixin, SmartFormView):
     class Form(ClaimViewMixin.Form):
         auth_token = forms.CharField(label=_("Authentication Token"), help_text=_("The discord bot token"))
-        proxy_url = forms.CharField(label=_("Proxy URL"), help_text=_("The URL on which the discord proxy is running"))
+        proxy_url = ExternalURLField(label=_("Proxy URL"), help_text=_("The URL on which the discord proxy is running"))
 
         def clean_auth_token(self):
             org = self.request.org

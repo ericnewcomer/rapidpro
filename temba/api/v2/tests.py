@@ -10,6 +10,7 @@ import iso8601
 import pytz
 from rest_framework import serializers
 from rest_framework.test import APIClient
+from smartmin.users.models import FailedLogin
 
 from django.conf import settings
 from django.contrib.auth.models import Group
@@ -860,6 +861,26 @@ class EndpointsTest(APITest):
         self.assertEqual(client.get(reverse("api.v2.contacts") + ".json").status_code, 200)
         self.assertEqual(client.get(reverse("api.v2.fields") + ".json").status_code, 200)
         self.assertEqual(client.get(reverse("api.v2.campaigns") + ".json").status_code, 403)
+
+        # repeated failed logins lock the user out, same as the regular login view
+        FailedLogin.objects.all().delete()
+        for i in range(5):
+            response = self.client.post(auth_url, {"username": "admin@nyaruka.com", "password": "XXXX", "role": "A"})
+            self.assertEqual(response.status_code, 403)
+
+        # even with the correct password
+        response = self.client.post(auth_url, {"username": "admin@nyaruka.com", "password": "Qwerty123", "role": "A"})
+        self.assertEqual(response.status_code, 403)
+
+        FailedLogin.objects.all().delete()
+
+        # this view can't complete a two factor login, so it can't be used to bypass one
+        self.admin.enable_2fa()
+
+        response = self.client.post(auth_url, {"username": "admin@nyaruka.com", "password": "Qwerty123", "role": "A"})
+        self.assertEqual(response.status_code, 403)
+
+        self.admin.disable_2fa()
 
     @patch("temba.flows.models.FlowStart.create")
     def test_transactions(self, mock_flowstart_create):

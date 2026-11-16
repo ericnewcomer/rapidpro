@@ -133,7 +133,21 @@ class AndroidTypeTest(TembaTest, CRUDLTestMixin):
         self.assertEqual(android1.uuid, "uuid")
         self.assertFalse(android1.claim_code)
 
-        # try having a device register again
+        # try having a device register again without presenting the current secret
+        response = self.client.post(reverse("register"), json.dumps(reg_data), content_type="application/json")
+        self.assertEqual(response.status_code, 200)
+
+        # should be refused with a masked response and the channel left untouched
+        self.assertEqual(
+            response.json(),
+            dict(cmds=[dict(cmd="reg", relayer_claim_code="*********", relayer_secret="0" * 64, relayer_id=-1)]),
+        )
+        android1.refresh_from_db()
+        self.assertEqual(android1.secret, secret)
+        self.assertFalse(android1.claim_code)
+
+        # try again presenting the current secret
+        reg_data["cmds"][0]["secret"] = android1.secret
         response = self.client.post(reverse("register"), json.dumps(reg_data), content_type="application/json")
         self.assertEqual(response.status_code, 200)
 
@@ -156,6 +170,7 @@ class AndroidTypeTest(TembaTest, CRUDLTestMixin):
 
         # try having a device register yet again with new FCM ID
         reg_data["cmds"][0]["fcm_id"] = "FCM222"
+        reg_data["cmds"][0]["secret"] = android1.secret
         response = self.client.post(reverse("register"), json.dumps(reg_data), content_type="application/json")
         self.assertEqual(response.status_code, 200)
 
@@ -216,7 +231,10 @@ class AndroidTypeTest(TembaTest, CRUDLTestMixin):
 
         # re-register device with country as US
         reg_data = dict(
-            cmds=[dict(cmd="fcm", fcm_id="FCM222", uuid="uuid"), dict(cmd="status", cc="US", dev="Nexus 5X")]
+            cmds=[
+                dict(cmd="fcm", fcm_id="FCM222", uuid="uuid", secret=android2.secret),
+                dict(cmd="status", cc="US", dev="Nexus 5X"),
+            ]
         )
         response = self.client.post(reverse("register"), json.dumps(reg_data), content_type="application/json")
         self.assertEqual(response.status_code, 200)

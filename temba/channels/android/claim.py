@@ -1,3 +1,5 @@
+import hmac
+
 from django.utils import timezone
 
 from temba.utils import countries, get_anonymous_user
@@ -43,6 +45,13 @@ def get_or_create_channel(registration_data, status):
 
     # if device exists reset some of the settings (ok because device clearly isn't in use if it's registering)
     if existing:
+        # if the channel is already claimed by an org, the device must prove it knows the current secret before we
+        # rotate and return new credentials - otherwise anyone who learns a channel UUID could take over the channel
+        if existing.org and not (
+            registration_data.get("secret") and hmac.compare_digest(registration_data["secret"], existing.secret or "")
+        ):
+            raise UnsupportedAndroidChannelError("Device not recognized for this channel")
+
         config = existing.config
         config.update({Channel.CONFIG_FCM_ID: fcm_id})
         existing.config = config
