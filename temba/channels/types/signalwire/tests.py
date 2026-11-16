@@ -10,7 +10,8 @@ from .type import SignalWireType
 
 
 class SignalWireTest(TembaTest):
-    def test_claim(self):
+    @patch("socket.gethostbyname", return_value="123.123.123.123")
+    def test_claim(self, mock_socket):
         Channel.objects.all().delete()
 
         url = reverse("channels.types.signalwire.claim")

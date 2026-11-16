@@ -33,8 +33,9 @@ class DiscordTypeTest(TembaTest):
     def setUp(self):
         super().setUp()
 
+    @patch("socket.gethostbyname", return_value="123.123.123.123")
     @patch("requests.get", side_effect=mocked_requests_get)
-    def test_claim(self, mocked):
+    def test_claim(self, mocked, mock_socket):
         url = reverse("channels.types.discord.claim")
 
         self.login(self.admin)
