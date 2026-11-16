@@ -17,7 +17,7 @@ MANAGERS = ADMINS
 OUTGOING_REQUEST_HEADERS = {"User-agent": "RapidPro"}
 
 # Make this unique, and don't share it with anybody.
-SECRET_KEY = "your own secret key"
+SECRET_KEY = os.environ.get("SECRET_KEY", "your own secret key")
 
 HELP_URL = None
 

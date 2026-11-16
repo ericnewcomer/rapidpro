@@ -8,7 +8,9 @@ SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = False
 SECURE_HSTS_SECONDS = 86400  # 24 hours
-SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "HTTPS")
+# proxies terminating TLS send the X-Forwarded-Proto value lowercased and Django compares it exactly, so this must
+# be "https"; the proxy must also strip any client-supplied X-Forwarded-Proto header
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 SECURE_REDIRECT_EXEMPT = []
 SECURE_SSL_HOST = None
 SECURE_SSL_REDIRECT = False
