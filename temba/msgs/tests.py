@@ -75,6 +75,20 @@ class MediaTest(TembaTest):
         self.assertEqual("passwd.jpg", Media.clean_name(".passwd", "image/jpeg"))
         self.assertEqual("tést[0].jpg", Media.clean_name("tést[0]/^..\\", "image/jpeg"))
 
+        # extensions that don't match the content type are replaced
+        self.assertEqual("foo.jpg", Media.clean_name("foo.html", "image/jpeg"))
+        self.assertEqual("foo.jpg", Media.clean_name("foo.svg", "image/jpeg"))
+        self.assertEqual("foo.pdf", Media.clean_name("foo.exe", "application/pdf"))
+
+    def test_is_allowed_type(self):
+        self.assertTrue(Media.is_allowed_type("image/jpeg"))
+        self.assertTrue(Media.is_allowed_type("audio/mpeg"))
+        self.assertTrue(Media.is_allowed_type("video/mp4"))
+        self.assertTrue(Media.is_allowed_type("application/pdf"))
+        self.assertFalse(Media.is_allowed_type("image/svg+xml"))  # can contain scripts
+        self.assertFalse(Media.is_allowed_type("text/html"))
+        self.assertFalse(Media.is_allowed_type("application/zip"))
+
     @mock_uuids
     def test_from_upload(self):
         media = Media.from_upload(

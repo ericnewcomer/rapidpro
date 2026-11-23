@@ -43,6 +43,7 @@ class Media(models.Model):
     """
 
     ALLOWED_CONTENT_TYPES = ("image/*", "audio/*", "video/*", "application/pdf")
+    BLOCKED_CONTENT_TYPES = ("image/svg+xml",)  # browsers execute scripts embedded in these
     MAX_UPLOAD_SIZE = 1024 * 1024 * 25  # 25MB
 
     STATUS_PENDING = "P"
@@ -69,6 +70,8 @@ class Media(models.Model):
 
     @classmethod
     def is_allowed_type(cls, content_type: str) -> bool:
+        if content_type in cls.BLOCKED_CONTENT_TYPES:
+            return False
         for allowed_type in cls.ALLOWED_CONTENT_TYPES:
             if fnmatch(content_type, allowed_type):
                 return True
@@ -87,7 +90,14 @@ class Media(models.Model):
         base_name, extension = os.path.splitext(filename)
         base_name = re.sub(r"[^\w\-\[\]\(\) ]", "", base_name).strip()[:255] or "file"
 
-        if not extension or len(extension) < 2 or not extension[1:].isalnum():
+        # only keep the client provided extension if it's consistent with the content type, so that a file served
+        # from storage with a type guessed from its extension can't be interpreted as HTML, SVG etc
+        if (
+            not extension
+            or len(extension) < 2
+            or not extension[1:].isalnum()
+            or extension.lower() not in mimetypes.guess_all_extensions(content_type)
+        ):
             extension = mimetypes.guess_extension(content_type) or ".bin"
 
         return base_name + extension
