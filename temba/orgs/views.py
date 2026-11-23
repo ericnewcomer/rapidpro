@@ -2597,6 +2597,22 @@ class OrgCRUDL(SmartCRUDL):
             initial["surveyor_password"] = self.request.POST.get("surveyor_password", "")
             return initial
 
+        def get_lockout_key(self):
+            return "surveyor:" + self.request.META.get("REMOTE_ADDR", "")
+
+        def post(self, request, *args, **kwargs):
+            # apply the same limits on failed password attempts that smartmin uses for regular logins
+            lockout_timeout = getattr(settings, "USER_LOCKOUT_TIMEOUT", 10)
+            failed_login_limit = getattr(settings, "USER_FAILED_LOGIN_LIMIT", 5)
+
+            failures = FailedLogin.objects.filter(username__iexact=self.get_lockout_key())
+            if lockout_timeout > 0:
+                failures = failures.filter(failed_on__gt=timezone.now() - timedelta(minutes=lockout_timeout))
+            if failures.count() >= failed_login_limit:
+                return HttpResponseRedirect(reverse("users.user_failed"))
+
+            return super().post(request, *args, **kwargs)
+
         def get_context_data(self, **kwargs):
             context = super().get_context_data()
             context["form"] = self.form
@@ -2657,6 +2673,8 @@ class OrgCRUDL(SmartCRUDL):
                 )
 
         def form_invalid(self, form):
+            if "surveyor_password" in form.errors:
+                FailedLogin.objects.create(username=self.get_lockout_key())
             return super().form_invalid(form)
 
         def derive_title(self):

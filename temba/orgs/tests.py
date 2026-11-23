@@ -1594,6 +1594,24 @@ class OrgTest(TembaTest):
         self.assertEqual(200, response.status_code)
         self.assertEqual(reverse("orgs.org_surveyor"), response._request.path)
 
+    def test_surveyor_lockout(self):
+        self.client.logout()
+        url = "%s?mobile=true" % reverse("orgs.org_surveyor")
+
+        self.org.surveyor_password = "nyaruka"
+        self.org.save(update_fields=("surveyor_password",))
+
+        # repeated failed password attempts lock out further attempts from that address
+        for i in range(5):
+            response = self.client.post(url, dict(surveyor_password="wrong%d" % i))
+            self.assertContains(
+                response, "Invalid surveyor password, please check with your project leader and try again."
+            )
+
+        # even with the correct password
+        response = self.client.post(url, dict(surveyor_password="nyaruka"))
+        self.assertRedirect(response, reverse("users.user_failed"))
+
     def test_surveyor(self):
         self.client.logout()
         url = "%s?mobile=true" % reverse("orgs.org_surveyor")
