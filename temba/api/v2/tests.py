@@ -861,6 +861,20 @@ class EndpointsTest(APITest):
         self.assertEqual(client.get(reverse("api.v2.fields") + ".json").status_code, 200)
         self.assertEqual(client.get(reverse("api.v2.campaigns") + ".json").status_code, 403)
 
+        # a user with 2FA enabled can't authenticate here as this endpoint can't verify a second factor
+        self.editor.enable_2fa()
+        response = self.client.post(auth_url, {"username": "editor@nyaruka.com", "password": "Qwerty123", "role": "E"})
+        self.assertEqual(response.status_code, 403)
+
+        # repeated failed attempts lock the user out just like the regular login
+        for i in range(5):
+            response = self.client.post(auth_url, {"username": "agent@nyaruka.com", "password": "XXXX", "role": "E"})
+            self.assertEqual(response.status_code, 403)
+
+        # even with the correct password
+        response = self.client.post(auth_url, {"username": "agent@nyaruka.com", "password": "Qwerty123", "role": "E"})
+        self.assertEqual(response.status_code, 403)
+
     @patch("temba.flows.models.FlowStart.create")
     def test_transactions(self, mock_flowstart_create):
         """

@@ -82,20 +82,33 @@ class ZendeskTypeTest(TembaTest):
             response, "form", "subdomain", ["There is already a ticketing service configured for this subdomain."]
         )
 
-        # submitting with valid subdomain redirects us to Zendesk
+        # try with subdomain that only starts with valid characters
+        response = self.client.post(connect_url, {"subdomain": "acme.evil.com/pwn"})
+        self.assertFormError(response, "form", "subdomain", ["Not a valid subdomain name."])
+
+        # submitting with valid subdomain redirects us to Zendesk with a random state stored in the session
         response = self.client.post(connect_url, {"subdomain": "acme"}, follow=False)
         self.assertIn("https://acme.zendesk.com/oauth/authorizations/new?response_type=code", response.url)
+        state = self.client.session["zendesk_oauth_state"]
+        self.assertIn(f"state={state}", response.url)
+        self.assertEqual("acme", self.client.session["zendesk_oauth_subdomain"])
 
         # if user doesn't authenticate, Zendesk returns to us with an error, which we display to the user
         response = self.client.get(connect_url + "?error=auth&error_description=thing%20went%20wrong")
         self.assertContains(response, "thing went wrong")
+
+        # a callback with the wrong state is rejected
+        response = self.client.get(connect_url + "?code=please&state=notthestate")
+        self.assertContains(response, "Unable to verify authorization request.")
 
         # if user does authenticate, zendesk gives us an authorization code which we use to request a token
         with patch("temba.tickets.types.zendesk.client.Client.get_oauth_token") as mock_get_oauth_token:
             # request to get token could fail
             mock_get_oauth_token.side_effect = ClientError("boom")
 
-            response = self.client.get(connect_url + "?code=please&state=temba")
+            response = self.client.post(connect_url, {"subdomain": "acme"}, follow=False)
+            state = self.client.session["zendesk_oauth_state"]
+            response = self.client.get(connect_url + f"?code=please&state={state}")
             self.assertContains(response, "Unable to request OAuth token.")
 
             # but if it succeeds...
@@ -103,7 +116,9 @@ class ZendeskTypeTest(TembaTest):
             mock_get_oauth_token.return_value = "236272"
 
             # ticketer will be created and user should be redirected to the configure page
-            response = self.client.get(connect_url + "?code=please&state=temba")
+            response = self.client.post(connect_url, {"subdomain": "temba"}, follow=False)
+            state = self.client.session["zendesk_oauth_state"]
+            response = self.client.get(connect_url + f"?code=please&state={state}")
 
             ticketer = Ticketer.objects.filter(ticketer_type="zendesk", is_active=True).order_by("id").last()
             self.assertEqual("temba", ticketer.name)

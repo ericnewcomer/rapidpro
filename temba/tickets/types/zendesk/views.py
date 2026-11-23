@@ -1,4 +1,5 @@
 import re
+import secrets
 from urllib.parse import urlparse
 
 from smartmin.views import SmartFormView, SmartReadView
@@ -42,7 +43,7 @@ class ConnectView(BaseConnectView):
             org = self.request.org
             data = self.cleaned_data["subdomain"]
 
-            if not re.match(r"^[\w\-]+", data):
+            if not re.fullmatch(r"[\w\-]+", data):
                 raise forms.ValidationError(_("Not a valid subdomain name."))
 
             for_domain = org.ticketers.filter(is_active=True, ticketer_type=ZendeskType.slug, config__subdomain=data)
@@ -72,13 +73,19 @@ class ConnectView(BaseConnectView):
 
     def form_valid(self, form):
         subdomain = form.cleaned_data["subdomain"]
+
+        # store state in the session so that the callback can't be forged or replayed with different values
+        state = secrets.token_urlsafe(32)
+        self.request.session["zendesk_oauth_state"] = state
+        self.request.session["zendesk_oauth_subdomain"] = subdomain
+
         query = urlencode(
             {
                 "response_type": "code",
                 "redirect_uri": self.get_absolute_url(),
                 "client_id": settings.ZENDESK_CLIENT_ID,
                 "scope": "read write",
-                "state": subdomain,
+                "state": state,
             }
         )
 
@@ -88,7 +95,13 @@ class ConnectView(BaseConnectView):
         from .type import ZendeskType
 
         code = request.GET["code"]
-        subdomain = request.GET["state"]
+        state = request.session.pop("zendesk_oauth_state", "")
+        subdomain = request.session.pop("zendesk_oauth_subdomain", "")
+
+        if not state or not secrets.compare_digest(state, request.GET.get("state", "")):
+            messages.error(request, _("Unable to verify authorization request."))
+            return super(ConnectView, self).get(request, *args, **kwargs)
+
         client = Client(subdomain)
         try:
             access_token = client.get_oauth_token(

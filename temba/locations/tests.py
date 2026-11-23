@@ -257,6 +257,16 @@ class LocationTest(TembaTest):
         self.assertEqual(children[0].get("name"), self.state2.name)
         self.assertEqual(children[0].get("aliases"), "Eastern P")
 
+        # aliases on the same boundary belonging to other orgs are not affected by updates in this org
+        other_org_alias = BoundaryAlias.create(self.org2, self.admin2, self.state1, "Other Org Alias")
+        self.client.post(
+            reverse("locations.adminboundary_boundaries", args=[self.country.osm_id]),
+            json.dumps(dict(osm_id=self.state1.osm_id, aliases="newname")),
+            content_type="application/json",
+        )
+        other_org_alias.refresh_from_db()
+        self.assertEqual("Other Org Alias", other_org_alias.name)
+
         # trigger wrong request data using bad json
         response = self.client.post(
             reverse("locations.adminboundary_boundaries", args=[self.country.osm_id]),

@@ -5,7 +5,6 @@ from django.db.models import Prefetch
 from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
 from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
-from django.views.decorators.csrf import csrf_exempt
 
 from temba.locations.models import AdminBoundary, BoundaryAlias
 from temba.orgs.views import OrgPermsMixin, SpaMixin
@@ -57,10 +56,6 @@ class BoundaryCRUDL(SmartCRUDL):
             return HttpResponse(self.object.get_geojson(), content_type="application/json")
 
     class Boundaries(OrgPermsMixin, SmartUpdateView):
-        @csrf_exempt
-        def dispatch(self, *args, **kwargs):
-            return super().dispatch(*args, **kwargs)
-
         @classmethod
         def derive_url_pattern(cls, path, action):
             # though we are a read view, we don't actually need an id passed
